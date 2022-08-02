@@ -78,5 +78,4 @@ class Images:
             ]
         )
         input_tensor = preprocess(input_image)
-        input_batch = input_tensor.unsqueeze(0)
-        return input_batch
+        return input_tensor.unsqueeze(0)

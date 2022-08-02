@@ -41,8 +41,10 @@ class TestBenchmark(unittest.TestCase):
         """Sanity check length and columns of function benchmarks"""
         func_benchmarks = benchmark.FuncBenchmarks()
         func_benchmarks.run()
-        expected_n_rows = len(benchmark.FuncBenchmarks.UNARY)
-        expected_n_rows += len(benchmark.FuncBenchmarks.BINARY)
+        expected_n_rows = len(benchmark.FuncBenchmarks.UNARY) + len(
+            benchmark.FuncBenchmarks.BINARY
+        )
+
         expected_n_rows += len(benchmark.FuncBenchmarks.LAYERS)
         n_rows = func_benchmarks.df.shape[0]
         self.assertEqual(

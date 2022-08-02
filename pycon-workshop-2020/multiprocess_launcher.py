@@ -27,12 +27,12 @@ class MultiProcessLauncher:
         multiprocessing.set_start_method("spawn")
 
         # Use random file so multiple jobs can be run simultaneously
-        INIT_METHOD = "file:///tmp/crypten-rendezvous-{}".format(uuid.uuid1())
+        INIT_METHOD = f"file:///tmp/crypten-rendezvous-{uuid.uuid1()}"
         env["RENDEZVOUS"] = INIT_METHOD
 
         self.processes = []
         for rank in range(world_size):
-            process_name = "process " + str(rank)
+            process_name = f"process {str(rank)}"
             process = multiprocessing.Process(
                 target=self.__class__._run_process,
                 name=process_name,

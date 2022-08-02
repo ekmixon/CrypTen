@@ -77,7 +77,7 @@ def _run_experiment(args):
         rank = os.environ["RANK"]
     logging.getLogger().setLevel(level)
 
-    tensorboard_folder = "/tmp/mpc_imagenet/" + rank
+    tensorboard_folder = f"/tmp/mpc_imagenet/{rank}"
     os.makedirs(tensorboard_folder, exist_ok=True)
     run_experiment(
         args.model,

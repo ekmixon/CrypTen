@@ -595,8 +595,6 @@ def update_model_accuracy(selected_date, mode, comp_opt):
 
     if filter_df.empty:
         return render_emtpy_figure()
-        return render_emtpy_figure()
-
     fig = px.bar(
         filter_df,
         x="accuracy",
@@ -722,11 +720,13 @@ def update_runtime_timeseries(funcs):
     except KeyError:
         return render_emtpy_figure()
 
-    fig = px.line(
-        filtered_df, x="date", y="runtime crypten", template=template, color="function"
+    return px.line(
+        filtered_df,
+        x="date",
+        y="runtime crypten",
+        template=template,
+        color="function",
     )
-
-    return fig
 
 
 @app.callback(Output("error-timeseries", "figure"), [Input("funcs", "value")])
@@ -739,11 +739,13 @@ def update_error_timeseries(funcs):
     except KeyError:
         return render_emtpy_figure()
 
-    fig = px.line(
-        filtered_df, x="date", y="total abs error", template=template, color="function"
+    return px.line(
+        filtered_df,
+        x="date",
+        y="total abs error",
+        template=template,
+        color="function",
     )
-
-    return fig
 
 
 @app.callback(
@@ -752,10 +754,7 @@ def update_error_timeseries(funcs):
 )
 def display_page(pathname):
     """Routes to page based on URL"""
-    if pathname == "/compare":
-        return comparison_layout
-    else:
-        return index_page
+    return comparison_layout if pathname == "/compare" else index_page
 
 
 if __name__ == "__main__":

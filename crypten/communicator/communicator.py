@@ -121,9 +121,9 @@ class Communicator:
         import crypten
 
         crypten.log("====Communication Stats====")
-        crypten.log("Rounds: {}".format(self.comm_rounds))
-        crypten.log("Bytes: {}".format(self.comm_bytes))
-        crypten.log("Communication time: {}".format(self.comm_time))
+        crypten.log(f"Rounds: {self.comm_rounds}")
+        crypten.log(f"Bytes: {self.comm_bytes}")
+        crypten.log(f"Communication time: {self.comm_time}")
 
     def get_communication_stats(self):
         """

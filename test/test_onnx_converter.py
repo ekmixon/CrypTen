@@ -43,26 +43,26 @@ class TestOnnxConverter(object):
             test_passed = (tensor == reference).all().item() == 1
         if not test_passed:
             logging.info(msg)
-            logging.info("Result %s" % tensor)
-            logging.info("Result - Reference = %s" % (tensor - reference))
+            logging.info(f"Result {tensor}")
+            logging.info(f"Result - Reference = {tensor - reference}")
         self.assertTrue(test_passed, msg=msg)
 
     def _check_reference_parameters(self, init_name, reference, model):
         for name, param in model.named_parameters(recurse=False):
-            local_name = init_name + "_" + name
+            local_name = f"{init_name}_{name}"
             self._check(param, reference[local_name], "parameter update failed")
         for name, module in model._modules.items():
-            local_name = init_name + "_" + name
+            local_name = f"{init_name}_{name}"
             self._check_reference_parameters(local_name, reference, module)
 
     def _compute_reference_parameters(self, init_name, reference, model, learning_rate):
         for name, param in model.named_parameters(recurse=False):
-            local_name = init_name + "_" + name
+            local_name = f"{init_name}_{name}"
             reference[local_name] = (
                 param.get_plain_text() - learning_rate * param.grad.get_plain_text()
             )
         for name, module in model._modules.items():
-            local_name = init_name + "_" + name
+            local_name = f"{init_name}_{name}"
             reference = self._compute_reference_parameters(
                 local_name, reference, module, learning_rate
             )

@@ -60,18 +60,18 @@ class TestNN(object):
             test_passed = (tensor == reference).all().item() == 1
         if not test_passed:
             logging.info(msg)
-            logging.info("Result %s" % tensor)
-            logging.info("Result - Reference = %s" % (tensor - reference))
+            logging.info(f"Result {tensor}")
+            logging.info(f"Result - Reference = {tensor - reference}")
         self.assertTrue(test_passed, msg=msg)
 
     def _compute_reference_parameters(self, init_name, reference, model, learning_rate):
         for name, param in model.named_parameters(recurse=False):
-            local_name = init_name + "_" + name
+            local_name = f"{init_name}_{name}"
             reference[local_name] = (
                 param.get_plain_text() - learning_rate * param.grad.get_plain_text()
             )
         for name, module in model.named_children():
-            local_name = init_name + "_" + name
+            local_name = f"{init_name}_{name}"
             reference = self._compute_reference_parameters(
                 local_name, reference, module, learning_rate
             )
@@ -79,10 +79,10 @@ class TestNN(object):
 
     def _check_reference_parameters(self, init_name, reference, model):
         for name, param in model.named_parameters(recurse=False):
-            local_name = init_name + "_" + name
+            local_name = f"{init_name}_{name}"
             self._check(param, reference[local_name], "parameter update failed")
         for name, module in model.named_children():
-            local_name = init_name + "_" + name
+            local_name = f"{init_name}_{name}"
             self._check_reference_parameters(local_name, reference, module)
 
     def setUp(self):
@@ -141,9 +141,7 @@ class TestNN(object):
         """
         # construct basic input
         base_tensor = torch.tensor([[2, 1], [3, 0]])
-        all_init = []
-        for i in range(-2, 3):
-            all_init.append(torch.add(base_tensor, i))
+        all_init = [torch.add(base_tensor, i) for i in range(-2, 3)]
         init_tensor = torch.stack(all_init, dim=2)
         init_tensor = init_tensor.unsqueeze(-1)
         reference = base_tensor.unsqueeze(-1).unsqueeze(-1)

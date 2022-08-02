@@ -24,10 +24,10 @@ def register_validation(getattr_function):
         # Get dispatched function call
         function = getattr_function(self, name)
 
-        if not cfg.debug.validation_mode:
-            return function
-
-        # Run validation
-        return validate_correctness(self, function, name)
+        return (
+            validate_correctness(self, function, name)
+            if cfg.debug.validation_mode
+            else function
+        )
 
     return validate_attribute

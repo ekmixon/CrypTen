@@ -47,7 +47,7 @@ class TestCrypten(MultiProcessTestCase):
         test_passed = test_passed.gt(0).all().item() == 1
         if not test_passed:
             logging.info(msg)
-            logging.info("Result %s" % tensor)
+            logging.info(f"Result {tensor}")
             logging.info("Result = %s;\nreference = %s" % (tensor, reference))
         self.assertTrue(test_passed, msg=msg)
 
@@ -102,14 +102,14 @@ class TestCrypten(MultiProcessTestCase):
             for op in ["cat", "stack"]:
                 reference = getattr(torch, op)([tensor1, tensor2])
                 encrypted_out = getattr(module, op)([encrypted1, encrypted2])
-                self._check(encrypted_out, reference, "%s failed" % op)
+                self._check(encrypted_out, reference, f"{op} failed")
 
                 for dim in range(4):
                     reference = getattr(torch, op)([tensor1, tensor2], dim=dim)
                     encrypted_out = getattr(module, op)(
                         [encrypted1, encrypted2], dim=dim
                     )
-                    self._check(encrypted_out, reference, "%s failed" % op)
+                    self._check(encrypted_out, reference, f"{op} failed")
 
     def test_print_log(self):
         """Tests crypten.print and crypten.log logging functions."""

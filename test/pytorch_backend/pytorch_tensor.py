@@ -26,10 +26,12 @@ class PyTorchTensor(CrypTensor):
 
         if device is None:
             device = torch.device("cpu")
-        if not torch.is_tensor(tensor):
-            tensor = torch.tensor(tensor, device=device)
-        else:
-            tensor = tensor.detach().to(device=device)
+        tensor = (
+            tensor.detach().to(device=device)
+            if torch.is_tensor(tensor)
+            else torch.tensor(tensor, device=device)
+        )
+
         tensor.requires_grad = False
         self._tensor = tensor
 

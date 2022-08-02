@@ -120,7 +120,7 @@ def register_cryptensor(name):
 def set_default_cryptensor_type(cryptensor_type):
     """Sets the default type used to create `CrypTensor`s."""
     if cryptensor_type not in CrypTensor.__CRYPTENSOR_TYPES__.keys():
-        raise ValueError("CrypTensor type %s does not exist." % cryptensor_type)
+        raise ValueError(f"CrypTensor type {cryptensor_type} does not exist.")
     CrypTensor.__DEFAULT_CRYPTENSOR_TYPE__ = cryptensor_type
 
 
@@ -132,13 +132,11 @@ def get_default_cryptensor_type():
 def get_cryptensor_type(tensor):
     """Gets the type name of the specified `tensor` `CrypTensor`."""
     if not isinstance(tensor, CrypTensor):
-        raise ValueError(
-            "Specified tensor is not a CrypTensor: {}".format(type(tensor))
-        )
+        raise ValueError(f"Specified tensor is not a CrypTensor: {type(tensor)}")
     for name, cls in CrypTensor.__CRYPTENSOR_TYPES__.items():
         if isinstance(tensor, cls):
             return name
-    raise ValueError("Unregistered CrypTensor type: {}".format(type(tensor)))
+    raise ValueError(f"Unregistered CrypTensor type: {type(tensor)}")
 
 
 def cryptensor(*args, cryptensor_type=None, **kwargs):
@@ -151,7 +149,7 @@ def cryptensor(*args, cryptensor_type=None, **kwargs):
     if cryptensor_type is None:
         cryptensor_type = get_default_cryptensor_type()
     if cryptensor_type not in CrypTensor.__CRYPTENSOR_TYPES__:
-        raise ValueError("CrypTensor type %s does not exist." % cryptensor_type)
+        raise ValueError(f"CrypTensor type {cryptensor_type} does not exist.")
 
     # create CrypTensor:
     return CrypTensor.__CRYPTENSOR_TYPES__[cryptensor_type](*args, **kwargs)
@@ -193,8 +191,7 @@ def _setup_prng():
 
     if torch.cuda.is_available():
         cuda_device_names = ["cuda"]
-        for i in range(torch.cuda.device_count()):
-            cuda_device_names.append(f"cuda:{i}")
+        cuda_device_names.extend(f"cuda:{i}" for i in range(torch.cuda.device_count()))
         cuda_devices = [torch.device(name) for name in cuda_device_names]
 
         for device in cuda_devices:
@@ -282,53 +279,51 @@ def load_from_party(
 
     if encrypted:
         raise NotImplementedError("Loading encrypted tensors is not yet supported")
-    else:
-        assert isinstance(src, int), "Load failed: src argument must be an integer"
-        assert (
-            src >= 0 and src < comm.get().get_world_size()
-        ), "Load failed: src must be in [0, world_size)"
+    assert isinstance(src, int), "Load failed: src argument must be an integer"
+    assert (
+        src >= 0 and src < comm.get().get_world_size()
+    ), "Load failed: src must be in [0, world_size)"
 
         # source party
-        if comm.get().get_rank() == src:
-            assert (f is None and (preloaded is not None)) or (
-                (f is not None) and preloaded is None
-            ), "Exactly one of f and preloaded must not be None"
+    if comm.get().get_rank() == src:
+        assert (f is None and (preloaded is not None)) or (
+            (f is not None) and preloaded is None
+        ), "Exactly one of f and preloaded must not be None"
 
-            if f is None:
-                result = preloaded
-            if preloaded is None:
-                result = load_closure(f, **kwargs)
+        if f is None:
+            result = preloaded
+        if preloaded is None:
+            result = load_closure(f, **kwargs)
 
             # Zero out the tensors / modules to hide loaded data from broadcast
-            if torch.is_tensor(result):
-                result_zeros = result.new_zeros(result.size())
-            elif isinstance(result, torch.nn.Module):
-                result_zeros = copy.deepcopy(result)
-                for p in result_zeros.parameters():
-                    p.data.fill_(0)
-            else:
-                result = comm.get().broadcast_obj(-1, src)
-                raise TypeError("Unrecognized load type %s" % type(result))
-
-            comm.get().broadcast_obj(result_zeros, src)
-
-        # Non-source party
-        else:
-            if model_class is not None:
-                crypten.common.serial.register_safe_class(model_class)
-            result = comm.get().broadcast_obj(None, src)
-            if isinstance(result, int) and result == -1:
-                raise TypeError("Unrecognized load type from src party")
-
         if torch.is_tensor(result):
-            result = crypten.cryptensor(result, src=src)
+            result_zeros = result.new_zeros(result.size())
+        elif isinstance(result, torch.nn.Module):
+            result_zeros = copy.deepcopy(result)
+            for p in result_zeros.parameters():
+                p.data.fill_(0)
+        else:
+            result = comm.get().broadcast_obj(-1, src)
+            raise TypeError(f"Unrecognized load type {type(result)}")
 
-        # TODO: Encrypt modules before returning them
-        # if isinstance(result, torch.nn.Module):
-        #     result = crypten.nn.from_pytorch(result, src=src)
+        comm.get().broadcast_obj(result_zeros, src)
 
-        result.src = src
-        return result
+    else:
+        if model_class is not None:
+            crypten.common.serial.register_safe_class(model_class)
+        result = comm.get().broadcast_obj(None, src)
+        if isinstance(result, int) and result == -1:
+            raise TypeError("Unrecognized load type from src party")
+
+    if torch.is_tensor(result):
+        result = crypten.cryptensor(result, src=src)
+
+    # TODO: Encrypt modules before returning them
+    # if isinstance(result, torch.nn.Module):
+    #     result = crypten.nn.from_pytorch(result, src=src)
+
+    result.src = src
+    return result
 
 
 def load(f, load_closure=torch.load, **kwargs):
@@ -347,12 +342,11 @@ def load(f, load_closure=torch.load, **kwargs):
             "crypten.load() should not be used with `src` argument. Use load_from_party() instead."
         )
 
-    # TODO: Add support for loading from correct device (kwarg: map_location=device)
-    if load_closure == torch.load:
-        obj = load_closure(f)
-    else:
-        obj = load_closure(f, **kwargs)
-    return obj
+    return (
+        load_closure(f)
+        if load_closure == torch.load
+        else load_closure(f, **kwargs)
+    )
 
 
 def save_from_party(obj, f, src=0, save_closure=torch.save, **kwargs):
@@ -370,14 +364,13 @@ def save_from_party(obj, f, src=0, save_closure=torch.save, **kwargs):
     """
     if is_encrypted_tensor(obj):
         raise NotImplementedError("Saving encrypted tensors is not yet supported")
-    else:
-        assert isinstance(src, int), "Save failed: src must be an integer"
-        assert (
-            src >= 0 and src < comm.get().get_world_size()
-        ), "Save failed: src must be an integer in [0, world_size)"
+    assert isinstance(src, int), "Save failed: src must be an integer"
+    assert (
+        src >= 0 and src < comm.get().get_world_size()
+    ), "Save failed: src must be an integer in [0, world_size)"
 
-        if comm.get().get_rank() == src:
-            save_closure(obj, f, **kwargs)
+    if comm.get().get_rank() == src:
+        save_closure(obj, f, **kwargs)
 
     # Implement barrier to avoid race conditions that require file to exist
     comm.get().barrier()

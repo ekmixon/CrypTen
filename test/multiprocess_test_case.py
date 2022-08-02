@@ -153,9 +153,10 @@ class MultiProcessTestCase(unittest.TestCase):
         communicator_args = {
             "WORLD_SIZE": self.world_size,
             "RANK": self.world_size,
-            "RENDEZVOUS": "file://%s" % self.file,
+            "RENDEZVOUS": f"file://{self.file}",
             "BACKEND": "gloo",
         }
+
         for key, val in communicator_args.items():
             os.environ[key] = str(val)
 
@@ -166,7 +167,7 @@ class MultiProcessTestCase(unittest.TestCase):
         return process
 
     def _spawn_process(self, rank):
-        name = "Process " + str(rank)
+        name = f"Process {str(rank)}"
         test_name = self._current_test_name()
         process = self.mp_context.Process(
             target=self.__class__._run,
@@ -191,9 +192,10 @@ class MultiProcessTestCase(unittest.TestCase):
         communicator_args = {
             "WORLD_SIZE": self.world_size,
             "RANK": self.rank,
-            "RENDEZVOUS": "file://%s" % self.file,
+            "RENDEZVOUS": f"file://{self.file}",
             "BACKEND": "gloo",
         }
+
         for key, val in communicator_args.items():
             os.environ[key] = str(val)
 

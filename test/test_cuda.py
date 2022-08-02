@@ -54,9 +54,9 @@ class TestCUDA(TestMPC):
 
         if not is_eq:
             logging.info(msg)
-            logging.info("Result %s" % result)
-            logging.info("Reference %s" % reference)
-            logging.info("Result - Reference = %s" % (result - reference))
+            logging.info(f"Result {result}")
+            logging.info(f"Reference {reference}")
+            logging.info(f"Result - Reference = {result - reference}")
 
         self.assertTrue(is_eq, msg=msg)
 
@@ -264,7 +264,7 @@ class TestCUDA(TestMPC):
                 reference = getattr(F, func_name)(
                     input, kernel, padding=padding, stride=stride
                 )
-                self._check_int(result, reference, "%s failed" % func_name)
+                self._check_int(result, reference, f"{func_name} failed")
 
     def test_torch_arithmetic(self):
         """Test torch arithmetic on CUDALongTensor"""
@@ -284,12 +284,11 @@ class TestCUDA(TestMPC):
 
             self.assertTrue(type(result), CUDALongTensor)
             self._check_int(
-                reference, result.cpu(), "torch.{} failed for CUDALongTensor".format(op)
+                reference, result.cpu(), f"torch.{op} failed for CUDALongTensor"
             )
+
             self._check_int(
-                reference,
-                result2.cpu(),
-                "torch.{} failed for CUDALongTensor".format(op),
+                reference, result2.cpu(), f"torch.{op} failed for CUDALongTensor"
             )
 
     def test_torch_comparators(self):
@@ -311,8 +310,8 @@ class TestCUDA(TestMPC):
             self.assertTrue(
                 type(result2) == CUDALongTensor, "result should be a CUDALongTensor"
             )
-            self._check_int(result1.cpu(), reference, "%s comparator failed" % comp)
-            self._check_int(result2.cpu(), reference, "%s comparator failed" % comp)
+            self._check_int(result1.cpu(), reference, f"{comp} comparator failed")
+            self._check_int(result2.cpu(), reference, f"{comp} comparator failed")
 
     def test_torch_avg_pool2d(self):
         """Test avg_pool2d on CUDALongTensor"""
@@ -358,7 +357,7 @@ class TestCUDA(TestMPC):
                 type(result) == CUDALongTensor, "result should be a CUDALongTensor"
             )
             self._check_int(
-                reference, result.cpu(), "torch.{} failed for CUDALongTensor".format(op)
+                reference, result.cpu(), f"torch.{op} failed for CUDALongTensor"
             )
 
     def test_torch_broadcast_tensor(self):
@@ -516,31 +515,30 @@ class TestCUDA(TestMPC):
 
         funcs = ["scatter", "scatter_add"]
         sizes = [(5, 5), (5, 5, 5), (5, 5, 5, 5)]
-        for func in funcs:
-            for size in sizes:
-                for dim in range(len(size)):
-                    tensor1 = get_random_test_tensor(size=size, is_float=False)
-                    tensor2 = get_random_test_tensor(size=size, is_float=False)
-                    index = get_random_test_tensor(size=size, is_float=False)
-                    index = index.abs().clamp(0, 4)
+        for func, size in itertools.product(funcs, sizes):
+            for dim in range(len(size)):
+                tensor1 = get_random_test_tensor(size=size, is_float=False)
+                tensor2 = get_random_test_tensor(size=size, is_float=False)
+                index = get_random_test_tensor(size=size, is_float=False)
+                index = index.abs().clamp(0, 4)
 
-                    t1_cuda = CUDALongTensor(tensor1)
-                    t2_cuda = CUDALongTensor(tensor2)
-                    idx_cuda = CUDALongTensor(index)
-                    reference = getattr(torch, func)(tensor1, dim, index, tensor2)
-                    result = getattr(torch, func)(t1_cuda, dim, idx_cuda, t2_cuda)
-                    result2 = getattr(t1_cuda, func)(dim, idx_cuda, t2_cuda)
+                t1_cuda = CUDALongTensor(tensor1)
+                t2_cuda = CUDALongTensor(tensor2)
+                idx_cuda = CUDALongTensor(index)
+                reference = getattr(torch, func)(tensor1, dim, index, tensor2)
+                result = getattr(torch, func)(t1_cuda, dim, idx_cuda, t2_cuda)
+                result2 = getattr(t1_cuda, func)(dim, idx_cuda, t2_cuda)
 
-                    self.assertTrue(
-                        type(result) == CUDALongTensor,
-                        "result should be a CUDALongTensor",
-                    )
-                    self.assertTrue(
-                        type(result2) == CUDALongTensor,
-                        "result should be a CUDALongTensor",
-                    )
-                    self._check_int(result.cpu(), reference, "{} failed".format(func))
-                    self._check_int(result2.cpu(), reference, "{} failed".format(func))
+                self.assertTrue(
+                    type(result) == CUDALongTensor,
+                    "result should be a CUDALongTensor",
+                )
+                self.assertTrue(
+                    type(result2) == CUDALongTensor,
+                    "result should be a CUDALongTensor",
+                )
+                self._check_int(result.cpu(), reference, f"{func} failed")
+                self._check_int(result2.cpu(), reference, f"{func} failed")
 
     def test_torch_nonzero(self):
         """Test torch.nonzero on CUDALongTensor"""

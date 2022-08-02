@@ -61,10 +61,10 @@ def split_features(
     party1_test = mnist_test_norm[:, :, :split_point]
     party2_test = mnist_test_norm[:, :, split_point:]
 
-    torch.save(party1_train, os.path.join(dir, party1 + "_train.pth"))
-    torch.save(party2_train, os.path.join(dir, party2 + "_train.pth"))
-    torch.save(party1_test, os.path.join(dir, party1 + "_test.pth"))
-    torch.save(party2_test, os.path.join(dir, party2 + "_test.pth"))
+    torch.save(party1_train, os.path.join(dir, f"{party1}_train.pth"))
+    torch.save(party2_train, os.path.join(dir, f"{party2}_train.pth"))
+    torch.save(party1_test, os.path.join(dir, f"{party1}_test.pth"))
+    torch.save(party2_test, os.path.join(dir, f"{party2}_test.pth"))
     torch.save(mnist_train_labels, os.path.join(dir, "train_labels.pth"))
     torch.save(mnist_test_labels, os.path.join(dir, "test_labels.pth"))
 
@@ -86,20 +86,26 @@ def split_observations(
     party2_train = mnist_train_norm[obs_train_split:, :, :]
     party1_test = mnist_test_norm[:obs_test_split, :, :]
     party2_test = mnist_test_norm[obs_test_split:, :, :]
-    torch.save(party1_train, os.path.join(dir, party1 + "_train.pth"))
-    torch.save(party2_train, os.path.join(dir, party2 + "_train.pth"))
-    torch.save(party1_test, os.path.join(dir, party1 + "_test.pth"))
-    torch.save(party2_test, os.path.join(dir, party2 + "_test.pth"))
+    torch.save(party1_train, os.path.join(dir, f"{party1}_train.pth"))
+    torch.save(party2_train, os.path.join(dir, f"{party2}_train.pth"))
+    torch.save(party1_test, os.path.join(dir, f"{party1}_test.pth"))
+    torch.save(party2_test, os.path.join(dir, f"{party2}_test.pth"))
 
     party1_train_labels = mnist_train_labels[:obs_train_split]
     party1_test_labels = mnist_test_labels[:obs_test_split]
     party2_train_labels = mnist_train_labels[obs_train_split:]
     party2_test_labels = mnist_test_labels[obs_test_split:]
 
-    torch.save(party1_train_labels, os.path.join(dir, party1 + "_train_labels.pth"))
-    torch.save(party1_test_labels, os.path.join(dir, party1 + "_test_labels.pth"))
-    torch.save(party2_train_labels, os.path.join(dir, party2 + "_train_labels.pth"))
-    torch.save(party2_test_labels, os.path.join(dir, party2 + "_test_labels.pth"))
+    torch.save(
+        party1_train_labels, os.path.join(dir, f"{party1}_train_labels.pth")
+    )
+
+    torch.save(party1_test_labels, os.path.join(dir, f"{party1}_test_labels.pth"))
+    torch.save(
+        party2_train_labels, os.path.join(dir, f"{party2}_train_labels.pth")
+    )
+
+    torch.save(party2_test_labels, os.path.join(dir, f"{party2}_test_labels.pth"))
 
 
 def split_features_v_labels(
@@ -110,10 +116,10 @@ def split_features_v_labels(
     mnist_train_norm, mnist_test_norm = mnist_norm
     mnist_train_labels, mnist_test_labels = mnist_labels
 
-    torch.save(mnist_train_norm, os.path.join(dir, party1 + "_train.pth"))
-    torch.save(mnist_test_norm, os.path.join(dir, party1 + "_test.pth"))
-    torch.save(mnist_train_labels, os.path.join(dir, party2 + "_train_labels.pth"))
-    torch.save(mnist_test_labels, os.path.join(dir, party2 + "_test_labels.pth"))
+    torch.save(mnist_train_norm, os.path.join(dir, f"{party1}_train.pth"))
+    torch.save(mnist_test_norm, os.path.join(dir, f"{party1}_test.pth"))
+    torch.save(mnist_train_labels, os.path.join(dir, f"{party2}_train_labels.pth"))
+    torch.save(mnist_test_labels, os.path.join(dir, f"{party2}_test_labels.pth"))
 
 
 def split_train_v_test(
@@ -124,10 +130,10 @@ def split_train_v_test(
     mnist_train_norm, mnist_test_norm = mnist_norm
     mnist_train_labels, mnist_test_labels = mnist_labels
 
-    torch.save(mnist_train_norm, os.path.join(dir, party1 + "_train.pth"))
-    torch.save(mnist_test_norm, os.path.join(dir, party2 + "_test.pth"))
-    torch.save(mnist_train_labels, os.path.join(dir, party1 + "_train_labels.pth"))
-    torch.save(mnist_test_labels, os.path.join(dir, party2 + "_test_labels.pth"))
+    torch.save(mnist_train_norm, os.path.join(dir, f"{party1}_train.pth"))
+    torch.save(mnist_test_norm, os.path.join(dir, f"{party2}_test.pth"))
+    torch.save(mnist_train_labels, os.path.join(dir, f"{party1}_train_labels.pth"))
+    torch.save(mnist_test_labels, os.path.join(dir, f"{party2}_test_labels.pth"))
 
 
 def main():

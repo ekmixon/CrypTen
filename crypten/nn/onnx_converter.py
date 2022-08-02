@@ -65,34 +65,6 @@ def from_tensorflow(tensorflow_graph_def, inputs, outputs):
         "crypten.nn.from_tensorflow is deprecated. ",
         "CrypTen will no longer support model conversion from TensorFlow.",
     )
-    # Exporting model to ONNX graph
-    if not TF_AND_TF2ONNX:
-        raise ImportError("Please install both tensorflow and tf2onnx packages")
-
-    with tf.Graph().as_default() as tf_graph:
-        tf.import_graph_def(tensorflow_graph_def, name="")
-    with tf2onnx.tf_loader.tf_session(graph=tf_graph):
-        g = tf2onnx.tfonnx.process_tf_graph(
-            tf_graph,
-            opset=10,
-            continue_on_error=False,
-            input_names=inputs,
-            output_names=outputs,
-        )
-    onnx_graph = tf2onnx.optimizer.optimize_graph(g)
-    model_proto = onnx_graph.make_model(
-        "converted from {}".format(tensorflow_graph_def)
-    )
-    f = io.BytesIO()
-    f.write(model_proto.SerializeToString())
-
-    # construct CrypTen model
-    # Note: We don't convert crypten model to training mode, as Tensorflow
-    # models are used for both training and evaluation without the specific
-    # conversion of one mode to another
-    f.seek(0)
-    crypten_model = from_onnx(f)
-    return crypten_model
 
 
 def _from_pytorch_to_bytes(pytorch_model, dummy_input):
@@ -199,7 +171,7 @@ def _get_input_output_names(onnx_model):
     """
     input_names = [input.name for input in onnx_model.graph.input]
     output_names = [output.name for output in onnx_model.graph.output]
-    assert len(input_names) >= 1, "number of inputs should be at least 1"
+    assert input_names, "number of inputs should be at least 1"
     assert len(output_names) == 1, "number of outputs should be 1"
     return input_names, output_names
 
@@ -231,7 +203,7 @@ def _get_attribute_value(attr):
         return list(attr.ints)
     elif len(attr.floats) > 0:
         return list(attr.floats)
-    raise ValueError("Unknown attribute type for attribute %s." % attr.name)
+    raise ValueError(f"Unknown attribute type for attribute {attr.name}.")
 
 
 def _get_operator_class(node_op_type, attributes):

@@ -185,7 +185,7 @@ def _safe_legacy_load(f):
             return
         if original_source != current_source:
             if container_type.dump_patches:
-                file_name = container_type.__name__ + ".patch"
+                file_name = f"{container_type.__name__}.patch"
                 diff = difflib.unified_diff(
                     current_source.split("\n"),
                     original_source.split("\n"),
@@ -203,10 +203,13 @@ def _safe_legacy_load(f):
                         elif file_size != len(lines) or f.read() != lines:
                             raise IOError
                     msg = (
-                        "Saved a reverse patch to " + file_name + ". "
-                        "Run `patch -p0 < " + file_name + "` to revert your "
-                        "changes."
-                    )
+                        (
+                            f"Saved a reverse patch to {file_name}" + ". "
+                            "Run `patch -p0 < "
+                        )
+                        + file_name
+                    ) + "` to revert your " "changes."
+
                 except IOError:
                     msg = (
                         "Tried to save a patch, but couldn't create a "
@@ -309,7 +312,7 @@ def _safe_legacy_load(f):
             else:
                 return storage
         else:
-            raise RuntimeError("Unknown saved id type: %s" % saved_id[0])
+            raise RuntimeError(f"Unknown saved id type: {saved_id[0]}")
 
     _check_seekable(f)
     f_should_read_directly = _should_read_directly(f)
@@ -341,7 +344,7 @@ def _safe_legacy_load(f):
         raise RuntimeError("Invalid magic number; corrupt file?")
     protocol_version = RestrictedUnpickler(f).load()
     if protocol_version != PROTOCOL_VERSION:
-        raise RuntimeError("Invalid protocol version: %s" % protocol_version)
+        raise RuntimeError(f"Invalid protocol version: {protocol_version}")
 
     _ = RestrictedUnpickler(f).load()  # _sys_info
     unpickler = RestrictedUnpickler(f)

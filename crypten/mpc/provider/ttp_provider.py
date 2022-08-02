@@ -185,10 +185,7 @@ class TTPClient:
             if device is None:
                 device = "cpu"
             device = torch.device(device)
-            if device.type == "cuda":
-                return self.generator_cuda
-            else:
-                return self.generator
+            return self.generator_cuda if device.type == "cuda" else self.generator
 
         def ttp_request(self, func_name, device, *args, **kwargs):
             assert (
@@ -251,7 +248,7 @@ class TTPServer:
             while True:
                 # Wait for next request from client
                 message = comm.get().recv_obj(0, self.ttp_group)
-                logging.info("Message received: %s" % message)
+                logging.info(f"Message received: {message}")
 
                 if message == "terminate":
                     logging.info("TTPServer shutting down.")
@@ -298,10 +295,7 @@ class TTPServer:
         if device is None:
             device = "cpu"
         device = torch.device(device)
-        if device.type == "cuda":
-            return self.generators_cuda
-        else:
-            return self.generators
+        return self.generators_cuda if device.type == "cuda" else self.generators
 
     def _get_additive_PRSS(self, size, remove_rank=False):
         """
@@ -341,9 +335,7 @@ class TTPServer:
 
         c = getattr(torch, op)(a, b, *args, **kwargs)
 
-        # Subtract all other shares of `c` from plaintext value of `c` to get `c0`
-        c0 = c - self._get_additive_PRSS(c.size(), remove_rank=True)
-        return c0
+        return c - self._get_additive_PRSS(c.size(), remove_rank=True)
 
     def square(self, size):
         # Add all shares of `r` to get plaintext `r`
@@ -358,9 +350,7 @@ class TTPServer:
 
         c = a & b
 
-        # xor all other shares of `c` from plaintext value of `c` to get `c0`
-        c0 = c ^ self._get_binary_PRSS(c.size(), remove_rank=True)
-        return c0
+        return c ^ self._get_binary_PRSS(c.size(), remove_rank=True)
 
     def wraps(self, size):
         r = [generate_random_ring_element(size, generator=g) for g in self.generators]
@@ -371,7 +361,4 @@ class TTPServer:
     def B2A(self, size):
         rB = self._get_binary_PRSS(size, bitlength=1)
 
-        # Subtract all other shares of `rA` from plaintext value of `rA`
-        rA = rB - self._get_additive_PRSS(size, remove_rank=True)
-
-        return rA
+        return rB - self._get_additive_PRSS(size, remove_rank=True)

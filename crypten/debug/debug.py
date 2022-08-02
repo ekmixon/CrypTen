@@ -123,8 +123,8 @@ def validate_correctness(self, func, func_name, tolerance=0.05):
             test_passed = test_passed.gt(0).all().item() == 1
             if not test_passed:
                 crypten_log(f"Function {func_name} returned incorrect values")
-                crypten_log("Result %s" % result)
-                crypten_log("Result - Reference = %s" % (result - reference))
+                crypten_log(f"Result {result}")
+                crypten_log(f"Result - Reference = {result - reference}")
                 raise ValueError(f"Function {func_name} returned incorrect values")
 
         return result_enc

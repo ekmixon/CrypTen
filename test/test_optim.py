@@ -37,8 +37,8 @@ class TestOptim(object):
             test_passed = (tensor == reference).all().item() == 1
         if not test_passed:
             logging.info(msg)
-            logging.info("Result: %s" % tensor)
-            logging.info("Reference: %s" % reference)
+            logging.info(f"Result: {tensor}")
+            logging.info(f"Reference: {reference}")
         self.assertTrue(test_passed, msg=msg)
 
     def test_sgd(self):

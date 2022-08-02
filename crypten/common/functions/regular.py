@@ -111,7 +111,10 @@ def scatter(self, dim, index, src):
     result = self.clone()
     if is_tensor(src):
         src = self.new(src)
-    assert isinstance(src, type(self)), "Unrecognized scatter src type: %s" % type(src)
+    assert isinstance(
+        src, type(self)
+    ), f"Unrecognized scatter src type: {type(src)}"
+
     result._tensor.scatter_(dim, index, src._tensor)
     return result
 
@@ -164,7 +167,7 @@ def mean(self, *args, **kwargs):
 def var(self, *args, **kwargs):
     """Computes variance of tensor along specified dimensions."""
     # preprocess inputs:
-    if len(args) == 0:
+    if not args:
         dim = None
         unbiased = kwargs.get("unbiased", False)
         mean = self.mean()
@@ -183,20 +186,14 @@ def var(self, *args, **kwargs):
 
     # Compute square error
     result = (self - mean).square()
-    if dim is None:
-        result = result.sum()
-    else:
-        result = result.sum(dim, keepdim=keepdim)
-
+    result = result.sum() if dim is None else result.sum(dim, keepdim=keepdim)
     # Determine divisor
     divisor = self.nelement() // result.nelement()
     if not unbiased:
         divisor -= 1
 
     # Compute mean square error
-    if divisor in [0, 1]:
-        return result
-    return result.div(divisor)
+    return result if divisor in [0, 1] else result.div(divisor)
 
 
 def prod(self, dim=None, keepdim=False):
@@ -245,7 +242,7 @@ def ger(self, y):
 
 def __cat_stack_helper(op, tensors, *args, **kwargs):
     assert op in ["cat", "stack"], "Unsupported op for helper function"
-    assert isinstance(tensors, list), "%s input must be a list" % op
+    assert isinstance(tensors, list), f"{op} input must be a list"
     assert len(tensors) > 0, "expected a non-empty list of CrypTensors"
 
     # Determine op-type

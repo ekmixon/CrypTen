@@ -183,8 +183,7 @@ class ArithmeticSharedTensor(object):
         Generates a Pseudo-random Secret Share from a set of random arithmetic shares
         """
         share = generate_random_ring_element(*size, device=device)
-        tensor = ArithmeticSharedTensor.from_shares(share=share)
-        return tensor
+        return ArithmeticSharedTensor.from_shares(share=share)
 
     @property
     def rank(self):
@@ -225,16 +224,15 @@ class ArithmeticSharedTensor(object):
             value = ArithmeticSharedTensor(value)
         assert isinstance(
             value, ArithmeticSharedTensor
-        ), "Unsupported input type %s for __setitem__" % type(value)
+        ), f"Unsupported input type {type(value)} for __setitem__"
+
         self.share.__setitem__(index, value.share)
 
     def pad(self, pad, mode="constant", value=0):
         """
         Pads the input tensor with values provided in `value`.
         """
-        assert mode == "constant", (
-            "Padding with mode %s is currently unsupported" % mode
-        )
+        assert mode == "constant", f"Padding with mode {mode} is currently unsupported"
 
         result = self.shallow_copy()
         if isinstance(value, (int, float)):
@@ -257,8 +255,9 @@ class ArithmeticSharedTensor(object):
             )
         else:
             raise TypeError(
-                "Cannot pad ArithmeticSharedTensor with a %s value" % type(value)
+                f"Cannot pad ArithmeticSharedTensor with a {type(value)} value"
             )
+
 
         return result
 
@@ -384,22 +383,20 @@ class ArithmeticSharedTensor(object):
                     getattr(protocol, op)(result, y, *args, **kwargs).share.data
                 )
         else:
-            raise TypeError("Cannot %s %s with %s" % (op, type(y), type(self)))
+            raise TypeError(f"Cannot {op} {type(y)} with {type(self)}")
 
-        # Scale by encoder scale if necessary
         if not additive_func:
-            if public:  # scale by self.encoder.scale
+            if public:
                 if self.encoder.scale > 1:
                     return result.div_(result.encoder.scale)
                 else:
                     result.encoder = self.encoder
-            else:  # scale by larger of self.encoder.scale and y.encoder.scale
-                if self.encoder.scale > 1 and y.encoder.scale > 1:
-                    return result.div_(result.encoder.scale)
-                elif self.encoder.scale > 1:
-                    result.encoder = self.encoder
-                else:
-                    result.encoder = y.encoder
+            elif self.encoder.scale > 1 and y.encoder.scale > 1:
+                return result.div_(result.encoder.scale)
+            elif self.encoder.scale > 1:
+                result.encoder = self.encoder
+            else:
+                result.encoder = y.encoder
 
         return result
 
@@ -466,11 +463,13 @@ class ArithmeticSharedTensor(object):
                 self.share = self.share.div_(y, rounding_mode="trunc")
 
             # Validate
-            if validate:
-                if not torch.lt(
+            if (
+                validate
+                and not torch.lt(
                     torch.abs(self.get_plain_text() * y - tensor), tolerance
-                ).all():
-                    raise ValueError("Final result of division is incorrect.")
+                ).all()
+            ):
+                raise ValueError("Final result of division is incorrect.")
 
             return self
 
@@ -478,7 +477,7 @@ class ArithmeticSharedTensor(object):
         if isinstance(y, float):
             y = torch.tensor([y], dtype=torch.float, device=self.device)
 
-        assert is_float_tensor(y), "Unsupported type for div_: %s" % type(y)
+        assert is_float_tensor(y), f"Unsupported type for div_: {type(y)}"
         return self.mul_(y.reciprocal())
 
     def matmul(self, y):
@@ -632,7 +631,8 @@ class ArithmeticSharedTensor(object):
             src = ArithmeticSharedTensor(src)
         assert isinstance(
             src, ArithmeticSharedTensor
-        ), "Unrecognized scatter src type: %s" % type(src)
+        ), f"Unrecognized scatter src type: {type(src)}"
+
         self.share.scatter_(dim, index, src.share)
         return self
 

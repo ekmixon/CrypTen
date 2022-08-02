@@ -50,8 +50,7 @@ def chebyshev_series(func, width, terms):
     x = width * torch.cos((n_range + 0.5) * np.pi / terms)
     y = func(x)
     cos_term = torch.cos(torch.ger(n_range, n_range + 0.5) * np.pi / terms)
-    coeffs = (2 / terms) * torch.sum(y * cos_term, axis=1)
-    return coeffs
+    return (2 / terms) * torch.sum(y * cos_term, axis=1)
 
 
 # FIXME: pytorch currently does not register `torch.cat` and

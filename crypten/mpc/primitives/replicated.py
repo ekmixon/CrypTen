@@ -33,10 +33,7 @@ def replicate_shares(share_list):
     for req in reqs:
         req.wait()
 
-    # Order [(x1, x2), (y1, y2), ...]
-    shares = [(share_list[i], rep_shares[i]) for i in range(len(share_list))]
-
-    return shares
+    return [(share_list[i], rep_shares[i]) for i in range(len(share_list))]
 
 
 def __replicated_secret_sharing_protocol(op, x, y, *args, **kwargs):

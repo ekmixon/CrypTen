@@ -36,8 +36,8 @@ class TestModels(MultiProcessTestCase):
         msg += " in modules."
 
         # Check modules()
-        crypten_modules = [m for m in crypten_model.modules()]
-        torchvision_modules = [m for m in torchvision_model.modules()]
+        crypten_modules = list(crypten_model.modules())
+        torchvision_modules = list(torchvision_model.modules())
         self.assertTrue(len(crypten_modules) == len(torchvision_modules), msg)
         for i, module in enumerate(crypten_modules):
             self.assertEqual(
@@ -51,7 +51,7 @@ class TestModels(MultiProcessTestCase):
         self.assertEqual(
             len(crypten_named_modules), len(torchvision_named_modules), msg
         )
-        for k in crypten_named_modules.keys():
+        for k in crypten_named_modules:
             self.assertTrue(k in torchvision_named_modules, msg)
 
     def _check_parameters(self, crypten_model, torchvision_model, pretrained, msg):
@@ -60,8 +60,8 @@ class TestModels(MultiProcessTestCase):
             msg = f"Pretrained {msg}"
 
         # Test parameters()
-        crypten_params = [p for p in crypten_model.parameters()]
-        torchvision_params = [p for p in torchvision_model.parameters()]
+        crypten_params = list(crypten_model.parameters())
+        torchvision_params = list(torchvision_model.parameters())
         self.assertEqual(len(crypten_params), len(torchvision_params), msg)
         for i, crypten_param in enumerate(crypten_params):
             torchvision_param = torchvision_params[i]

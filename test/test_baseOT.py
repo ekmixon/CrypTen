@@ -23,7 +23,6 @@ class TestObliviousTransfer(MultiProcessTestCase):
             # play the role of receiver later  with choice bit [0, 1]
             choices = [1, 0]
             msgcs = ot.receive(choices)
-            self.assertEqual(msgcs, ["123", "123"])
         else:
             # play the role of receiver first with choice bit [1, 0]
             choices = [0, 1]
@@ -33,7 +32,8 @@ class TestObliviousTransfer(MultiProcessTestCase):
             msg0s = ["xyz", "123"]
             msg1s = ["123", "uvw"]
             ot.send(msg0s, msg1s)
-            self.assertEqual(msgcs, ["123", "123"])
+
+        self.assertEqual(msgcs, ["123", "123"])
 
 
 if __name__ == "__main__":

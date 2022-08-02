@@ -219,7 +219,7 @@ class BinarySharedTensor(object):
         elif isinstance(y, BinarySharedTensor):
             self.share ^= y.share
         else:
-            raise TypeError("Cannot XOR %s with %s." % (type(y), type(self)))
+            raise TypeError(f"Cannot XOR {type(y)} with {type(self)}.")
         return self
 
     def __xor__(self, y):
@@ -240,7 +240,7 @@ class BinarySharedTensor(object):
         elif isinstance(y, BinarySharedTensor):
             self.share.set_(beaver.AND(self, y).share.data)
         else:
-            raise TypeError("Cannot AND %s with %s." % (type(y), type(self)))
+            raise TypeError(f"Cannot AND {type(y)} with {type(self)}.")
         return self
 
     def __and__(self, y):
@@ -320,7 +320,8 @@ class BinarySharedTensor(object):
             value = BinarySharedTensor(value)
         assert isinstance(
             value, BinarySharedTensor
-        ), "Unsupported input type %s for __setitem__" % type(value)
+        ), f"Unsupported input type {type(value)} for __setitem__"
+
         self.share.__setitem__(index, value.share)
 
     @staticmethod
@@ -338,11 +339,7 @@ class BinarySharedTensor(object):
 
     def sum(self, dim=None):
         """Add all tensors along a given dimension using a log-reduction"""
-        if dim is None:
-            x = self.flatten()
-        else:
-            x = self.transpose(0, dim)
-
+        x = self.flatten() if dim is None else self.transpose(0, dim)
         # Add all BinarySharedTensors
         while x.size(0) > 1:
             extra = None
@@ -355,10 +352,7 @@ class BinarySharedTensor(object):
             if extra is not None:
                 x.share = torch_cat([x.share, extra.share.unsqueeze(0)])
 
-        if dim is None:
-            x = x.squeeze()
-        else:
-            x = x.transpose(0, dim).squeeze(dim)
+        x = x.squeeze() if dim is None else x.transpose(0, dim).squeeze(dim)
         return x
 
     def cumsum(self, *args, **kwargs):
@@ -438,7 +432,8 @@ class BinarySharedTensor(object):
             src = BinarySharedTensor(src)
         assert isinstance(
             src, BinarySharedTensor
-        ), "Unrecognized scatter src type: %s" % type(src)
+        ), f"Unrecognized scatter src type: {type(src)}"
+
         self.share.scatter_(dim, index, src.share)
         return self
 

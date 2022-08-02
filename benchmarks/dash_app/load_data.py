@@ -109,13 +109,11 @@ def read_subdir(base_dir, dates, subdir="", cuda=False):
 
 def get_available_dates(data_dir):
     """Returns list of available dates in DATA_PATH directory"""
-    available_dates = []
-
-    for sub_dir in os.listdir(data_dir):
-        if os.path.isdir(os.path.join(data_dir, sub_dir)):
-            available_dates.append(sub_dir)
-
-    return available_dates
+    return [
+        sub_dir
+        for sub_dir in os.listdir(data_dir)
+        if os.path.isdir(os.path.join(data_dir, sub_dir))
+    ]
 
 
 def set_metadata(df, date, device):

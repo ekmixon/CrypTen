@@ -56,10 +56,7 @@ class InProcessCommunicator(Communicator):
 
     @classmethod
     def get(cls):
-        if not hasattr(cls.tls, "instance"):
-            return None
-
-        return cls.tls.instance
+        return cls.tls.instance if hasattr(cls.tls, "instance") else None
 
     @classmethod
     def is_initialized(cls):

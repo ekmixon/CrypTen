@@ -54,13 +54,11 @@ def max(self, dim=None, keepdim=False, one_hot=True):
     if dim is None:
         if method in ["log_reduction", "double_log_reduction"]:
             # max_result can be obtained directly
-            max_result = _max_helper_all_tree_reductions(self, method=method)
-        else:
-            # max_result needs to be obtained through argmax
-            with cfg.temp_override({"functions.max_method": method}):
-                argmax_result = self.argmax(one_hot=True)
-            max_result = self.mul(argmax_result).sum()
-        return max_result
+            return _max_helper_all_tree_reductions(self, method=method)
+        # max_result needs to be obtained through argmax
+        with cfg.temp_override({"functions.max_method": method}):
+            argmax_result = self.argmax(one_hot=True)
+        return self.mul(argmax_result).sum()
     else:
         argmax_result, max_result = _argmax_helper(
             self, dim=dim, one_hot=True, method=method, _return_max=True
@@ -85,10 +83,7 @@ def max(self, dim=None, keepdim=False, one_hot=True):
 def min(self, dim=None, keepdim=False, one_hot=True):
     """Returns the minimum value of all elements in the input tensor."""
     result = (-self).max(dim=dim, keepdim=keepdim, one_hot=one_hot)
-    if dim is None:
-        return -result
-    else:
-        return -result[0], result[1]
+    return -result if dim is None else (-result[0], result[1])
 
 
 # Helper functions
@@ -159,37 +154,35 @@ def _max_helper_double_log_recursive(enc_tensor, dim):
     # vectors that can be extracted from n
     sqrt_n = int(math.sqrt(n))
     count_sqrt_n = n // sqrt_n
-    # base case for recursion: no further splits along dimension dim
     if n == 1:
         return enc_tensor
-    else:
-        # split into tensors that can be broken into vectors of size sqrt(n)
-        # and the remainder of the tensor
-        size_arr = [sqrt_n * count_sqrt_n, n % sqrt_n]
-        split_enc_tensor, remainder = enc_tensor.split(size_arr, dim=dim)
+    # split into tensors that can be broken into vectors of size sqrt(n)
+    # and the remainder of the tensor
+    size_arr = [sqrt_n * count_sqrt_n, n % sqrt_n]
+    split_enc_tensor, remainder = enc_tensor.split(size_arr, dim=dim)
 
-        # reshape such that dim holds sqrt_n and dim+1 holds count_sqrt_n
-        updated_enc_tensor_size = [sqrt_n, enc_tensor.size(dim + 1) * count_sqrt_n]
-        size_arr = [enc_tensor.size(i) for i in range(enc_tensor.dim())]
-        size_arr[dim], size_arr[dim + 1] = updated_enc_tensor_size
-        split_enc_tensor = split_enc_tensor.reshape(size_arr)
+    # reshape such that dim holds sqrt_n and dim+1 holds count_sqrt_n
+    updated_enc_tensor_size = [sqrt_n, enc_tensor.size(dim + 1) * count_sqrt_n]
+    size_arr = [enc_tensor.size(i) for i in range(enc_tensor.dim())]
+    size_arr[dim], size_arr[dim + 1] = updated_enc_tensor_size
+    split_enc_tensor = split_enc_tensor.reshape(size_arr)
 
-        # recursive call on reshaped tensor
-        split_enc_max = _max_helper_double_log_recursive(split_enc_tensor, dim)
+    # recursive call on reshaped tensor
+    split_enc_max = _max_helper_double_log_recursive(split_enc_tensor, dim)
 
-        # reshape the result to have the (dim+1)th dimension as before
-        # and concatenate the previously computed remainder
-        size_arr[dim], size_arr[dim + 1] = [count_sqrt_n, enc_tensor.size(dim + 1)]
-        enc_max_tensor = split_enc_max.reshape(size_arr)
-        full_max_tensor = crypten.cat([enc_max_tensor, remainder], dim=dim)
+    # reshape the result to have the (dim+1)th dimension as before
+    # and concatenate the previously computed remainder
+    size_arr[dim], size_arr[dim + 1] = [count_sqrt_n, enc_tensor.size(dim + 1)]
+    enc_max_tensor = split_enc_max.reshape(size_arr)
+    full_max_tensor = crypten.cat([enc_max_tensor, remainder], dim=dim)
 
-        # call the max function on dimension dim
-        with cfg.temp_override({"functions.max_method": "pairwise"}):
-            enc_max, enc_arg_max = full_max_tensor.max(dim=dim, keepdim=True)
-        # compute max over the resulting reduced tensor with n^2 algorithm
-        # note that the resulting one-hot vector we get here finds maxes only
-        # over the reduced vector in enc_tensor_reduced, so we won't use it
-        return enc_max
+    # call the max function on dimension dim
+    with cfg.temp_override({"functions.max_method": "pairwise"}):
+        enc_max, enc_arg_max = full_max_tensor.max(dim=dim, keepdim=True)
+    # compute max over the resulting reduced tensor with n^2 algorithm
+    # note that the resulting one-hot vector we get here finds maxes only
+    # over the reduced vector in enc_tensor_reduced, so we won't use it
+    return enc_max
 
 
 def _max_helper_double_log_reduction(enc_tensor, dim=None):
@@ -288,10 +281,7 @@ def _argmax_helper(
             if one_hot
             else enc_tensor.new(torch.zeros(()))
         )
-        if _return_max:
-            return result, None
-        return result
-
+        return (result, None) if _return_max else result
     updated_enc_tensor = enc_tensor.flatten() if dim is None else enc_tensor
 
     if method == "pairwise":
@@ -307,10 +297,7 @@ def _argmax_helper(
     result_args = result_args.weighted_index(dim)
     result_args = result_args.view(enc_tensor.size()) if dim is None else result_args
 
-    if _return_max:
-        return result_args, result_val
-    else:
-        return result_args
+    return (result_args, result_val) if _return_max else result_args
 
 
 def _one_hot_to_index(tensor, dim, keepdim, device=None):

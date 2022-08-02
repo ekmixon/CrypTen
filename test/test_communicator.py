@@ -352,7 +352,7 @@ class TestCommunicatorMultiProcess(TestCommunicator, MultiProcessTestCase):
                     args = (0,)  # dst arg
                 if op == "broadcast":
                     args = (0,)  # dst arg
-                if op == "scatter":
+                elif op == "scatter":
                     tensor = [tensor] * self.world_size
                     args = (0,)  # src arg
 

@@ -230,12 +230,8 @@ def construct_private_model(input_size, model):
     dummy_input = torch.empty(input_size)
 
     # party 0 always gets the actual model; remaining parties get dummy model
-    if rank == 0:
-        model_upd = model
-    else:
-        model_upd = LeNet()
-    private_model = crypten.nn.from_pytorch(model_upd, dummy_input).encrypt(src=0)
-    return private_model
+    model_upd = model if rank == 0 else LeNet()
+    return crypten.nn.from_pytorch(model_upd, dummy_input).encrypt(src=0)
 
 
 def encrypt_data_tensor_with_src(input):
@@ -245,19 +241,9 @@ def encrypt_data_tensor_with_src(input):
     # get world size
     world_size = comm.get().get_world_size()
 
-    if world_size > 1:
-        # party 1 gets the actual tensor; remaining parties get dummy tensor
-        src_id = 1
-    else:
-        # party 0 gets the actual tensor since world size is 1
-        src_id = 0
-
-    if rank == src_id:
-        input_upd = input
-    else:
-        input_upd = torch.empty(input.size())
-    private_input = crypten.cryptensor(input_upd, src=src_id)
-    return private_input
+    src_id = 1 if world_size > 1 else 0
+    input_upd = input if rank == src_id else torch.empty(input.size())
+    return crypten.cryptensor(input_upd, src=src_id)
 
 
 def validate(val_loader, model, criterion, print_freq=10):

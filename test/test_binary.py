@@ -42,8 +42,8 @@ class TestBinary(MultiProcessTestCase):
         test_passed = (tensor == reference).all().item() == 1
         if not test_passed:
             logging.info(msg)
-            logging.info("Result %s" % tensor)
-            logging.info("Result - Reference = %s" % (tensor - reference))
+            logging.info(f"Result {tensor}")
+            logging.info(f"Result - Reference = {tensor - reference}")
         self.assertTrue(test_passed, msg=msg)
 
     def test_encrypt_decrypt(self):
@@ -159,7 +159,7 @@ class TestBinary(MultiProcessTestCase):
             encrypted_tensor = BinarySharedTensor(tensor)
             encrypted_tensor2 = tensor_type(tensor2)
             encrypted_out = encrypted_tensor ^ encrypted_tensor2
-            self._check(encrypted_out, reference, "%s XOR failed" % tensor_type)
+            self._check(encrypted_out, reference, f"{tensor_type} XOR failed")
 
     def test_AND(self):
         """Test bitwise-AND function on BinarySharedTensor"""
@@ -170,7 +170,7 @@ class TestBinary(MultiProcessTestCase):
             encrypted_tensor = BinarySharedTensor(tensor)
             encrypted_tensor2 = tensor_type(tensor2)
             encrypted_out = encrypted_tensor & encrypted_tensor2
-            self._check(encrypted_out, reference, "%s AND failed" % tensor_type)
+            self._check(encrypted_out, reference, f"{tensor_type} AND failed")
 
     def test_OR(self):
         """Test bitwise-OR function on BinarySharedTensor"""
@@ -181,7 +181,7 @@ class TestBinary(MultiProcessTestCase):
             encrypted_tensor = BinarySharedTensor(tensor)
             encrypted_tensor2 = tensor_type(tensor2)
             encrypted_out = encrypted_tensor | encrypted_tensor2
-            self._check(encrypted_out, reference, "%s OR failed" % tensor_type)
+            self._check(encrypted_out, reference, f"{tensor_type} OR failed")
 
     def test_bitwise_broadcasting(self):
         """Tests bitwise function broadcasting"""
@@ -244,7 +244,7 @@ class TestBinary(MultiProcessTestCase):
             encrypted_tensor = BinarySharedTensor(tensor)
             encrypted_tensor2 = tensor_type(tensor2)
             encrypted_out = encrypted_tensor + encrypted_tensor2
-            self._check(encrypted_out, reference, "%s add failed" % tensor_type)
+            self._check(encrypted_out, reference, f"{tensor_type} add failed")
 
     def test_comparators(self):
         """Test comparators (>, >=, <, <=, ==, !=)"""
@@ -260,7 +260,7 @@ class TestBinary(MultiProcessTestCase):
                     reference = getattr(tensor, comp)(tensor2).long()
                     encrypted_out = getattr(encrypted_tensor, comp)(encrypted_tensor2)
 
-                    self._check(encrypted_out, reference, "%s comparator failed" % comp)
+                    self._check(encrypted_out, reference, f"{comp} comparator failed")
 
     def test_sum(self):
         """Tests sum using binary shares"""
@@ -297,9 +297,7 @@ class TestBinary(MultiProcessTestCase):
                 encrypted2 = tensor_type(tensor2)
                 encrypted_out[:, 0] = encrypted2
 
-                self._check(
-                    encrypted_out, reference, "%s setitem failed" % type(encrypted2)
-                )
+                self._check(encrypted_out, reference, f"{type(encrypted2)} setitem failed")
 
                 reference = tensor.clone()
                 reference[0, :] = tensor2
@@ -308,9 +306,7 @@ class TestBinary(MultiProcessTestCase):
                 encrypted2 = tensor_type(tensor2)
                 encrypted_out[0, :] = encrypted2
 
-                self._check(
-                    encrypted_out, reference, "%s setitem failed" % type(encrypted2)
-                )
+                self._check(encrypted_out, reference, f"{type(encrypted2)} setitem failed")
 
     def test_share_attr(self):
         """Tests share attribute getter and setter"""
@@ -349,33 +345,33 @@ class TestBinary(MultiProcessTestCase):
                 self._check(
                     encrypted1,
                     tensor1,
-                    "%s out-of-place %s modifies input"
-                    % ("private" if private else "public", op),
+                    f'{"private" if private else "public"} out-of-place {op} modifies input',
                 )
+
                 self._check(
                     encrypted_out,
                     reference,
-                    "%s out-of-place %s produces incorrect output"
-                    % ("private" if private else "public", op),
+                    f'{"private" if private else "public"} out-of-place {op} produces incorrect output',
                 )
+
                 self.assertFalse(id(encrypted_out.share) == input_plain_id)
                 self.assertFalse(id(encrypted_out) == input_encrypted_id)
 
                 # Test that in-place functions modify the input
-                inplace_op = op[:2] + "i" + op[2:]
+                inplace_op = f"{op[:2]}i{op[2:]}"
                 encrypted_out = getattr(encrypted1, inplace_op)(encrypted2)
                 self._check(
                     encrypted1,
                     reference,
-                    "%s in-place %s does not modify input"
-                    % ("private" if private else "public", inplace_op),
+                    f'{"private" if private else "public"} in-place {inplace_op} does not modify input',
                 )
+
                 self._check(
                     encrypted_out,
                     reference,
-                    "%s in-place %s produces incorrect output"
-                    % ("private" if private else "public", inplace_op),
+                    f'{"private" if private else "public"} in-place {inplace_op} produces incorrect output',
                 )
+
                 self.assertTrue(id(encrypted_out.share) == input_plain_id)
                 self.assertTrue(id(encrypted_out) == input_encrypted_id)
 
@@ -384,17 +380,12 @@ class TestBinary(MultiProcessTestCase):
         tensor = get_random_test_tensor(is_float=False)
         encrypted_tensor = BinarySharedTensor(tensor)
         with self.assertRaises(RuntimeError):
-            if encrypted_tensor:
-                pass
-
+            pass
         with self.assertRaises(RuntimeError):
             tensor = 5 if encrypted_tensor else 0
 
         with self.assertRaises(RuntimeError):
-            if False:
-                pass
-            elif encrypted_tensor:
-                pass
+            pass
 
     def test_src_failure(self):
         """Tests that out-of-bounds src fails as expected"""
@@ -469,40 +460,39 @@ class TestBinary(MultiProcessTestCase):
         """Test scatter function of encrypted tensor"""
         funcs = ["scatter", "scatter_"]
         sizes = [(5, 5), (5, 5, 5), (5, 5, 5, 5)]
-        for func in funcs:
-            for size in sizes:
-                for tensor_type in [lambda x: x, BinarySharedTensor]:
-                    for dim in range(len(size)):
-                        tensor1 = get_random_test_tensor(size=size, is_float=False)
-                        tensor2 = get_random_test_tensor(size=size, is_float=False)
-                        index = get_random_test_tensor(size=size, is_float=False)
-                        index = index.abs().clamp(0, 4)
-                        encrypted = BinarySharedTensor(tensor1)
-                        encrypted2 = tensor_type(tensor2)
-                        reference = getattr(tensor1, func)(dim, index, tensor2)
-                        encrypted_out = getattr(encrypted, func)(dim, index, encrypted2)
-                        private = tensor_type == BinarySharedTensor
-                        self._check(
-                            encrypted_out,
-                            reference,
-                            "%s %s failed" % ("private" if private else "public", func),
-                        )
-                        if func.endswith("_"):
+        for func, size in itertools.product(funcs, sizes):
+            for tensor_type in [lambda x: x, BinarySharedTensor]:
+                for dim in range(len(size)):
+                    tensor1 = get_random_test_tensor(size=size, is_float=False)
+                    tensor2 = get_random_test_tensor(size=size, is_float=False)
+                    index = get_random_test_tensor(size=size, is_float=False)
+                    index = index.abs().clamp(0, 4)
+                    encrypted = BinarySharedTensor(tensor1)
+                    encrypted2 = tensor_type(tensor2)
+                    reference = getattr(tensor1, func)(dim, index, tensor2)
+                    encrypted_out = getattr(encrypted, func)(dim, index, encrypted2)
+                    private = tensor_type == BinarySharedTensor
+                    self._check(
+                        encrypted_out,
+                        reference,
+                        f'{"private" if private else "public"} {func} failed',
+                    )
+
+                    if func.endswith("_"):
                             # Check in-place scatter modified input
-                            self._check(
-                                encrypted,
-                                reference,
-                                "%s %s failed to modify input"
-                                % ("private" if private else "public", func),
-                            )
-                        else:
+                        self._check(
+                            encrypted,
+                            reference,
+                            f'{"private" if private else "public"} {func} failed to modify input',
+                        )
+
+                    else:
                             # Check original is not modified
-                            self._check(
-                                encrypted,
-                                tensor1,
-                                "%s %s unintendedly modified input"
-                                % ("private" if private else "public", func),
-                            )
+                        self._check(
+                            encrypted,
+                            tensor1,
+                            f'{"private" if private else "public"} {func} unintendedly modified input',
+                        )
 
     def test_split(self):
         """Test gather function of encrypted tensor"""

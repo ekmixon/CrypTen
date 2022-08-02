@@ -99,7 +99,7 @@ class CUDALongTensor(object):
         return HANDLED_FUNCTIONS[func](*args, **kwargs)
 
     def __repr__(self):
-        return "CUDALongTensor({})".format(self._tensor)
+        return f"CUDALongTensor({self._tensor})"
 
     def __setitem__(self, index, value):
         self._tensor[index] = value.data
@@ -129,9 +129,7 @@ class CUDALongTensor(object):
 
     def to(self, *args, **kwargs):
         self._tensor = self._tensor.to(*args, **kwargs)
-        if not self._tensor.is_cuda:
-            return self._tensor
-        return self
+        return self if self._tensor.is_cuda else self._tensor
 
     def cuda(self, *args, **kwargs):
         self._tensor = self._tensor.cuda(*args, **kwargs)
@@ -142,9 +140,7 @@ class CUDALongTensor(object):
 
     def shallow_copy(self):
         """Create a shallow copy of the input tensor."""
-        # TODO: Rename this to __copy__()?
-        result = CUDALongTensor(self._tensor)
-        return result
+        return CUDALongTensor(self._tensor)
 
     def clone(self):
         """Create a deep copy of the input tensor."""

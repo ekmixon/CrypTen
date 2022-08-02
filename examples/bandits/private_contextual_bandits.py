@@ -52,9 +52,7 @@ def online_learner(
         start_t = time.time()
 
         # unpack sample:
-        assert "context" in sample and "rewards" in sample, (
-            "invalid sample: %s" % sample
-        )
+        assert "context" in sample and "rewards" in sample, f"invalid sample: {sample}"
 
         context = crypten.cryptensor(sample["context"])
         num_features = context.nelement()

@@ -111,12 +111,13 @@ def run_tfe_benchmarks(
                 ),
             )
         train_loader = (
-            torch.utils.data.DataLoader(
+            None
+            if evaluate
+            else torch.utils.data.DataLoader(
                 mnist_train, batch_size=batch_size, shuffle=True
             )
-            if not evaluate
-            else None
         )
+
         test_loader = torch.utils.data.DataLoader(
             mnist_test, batch_size=batch_size, shuffle=False
         )
@@ -166,12 +167,12 @@ def run_tfe_benchmarks(
         # remember best prec@1 and save checkpoint
         is_best = prec1 > best_prec1
         best_prec1 = max(prec1, best_prec1)
-        checkpoint_file = "checkpoint_bn" + network + ".pth.tar"
-        model_best_file = "model_best_bn" + network + ".pth.tar"
+        checkpoint_file = f"checkpoint_bn{network}.pth.tar"
+        model_best_file = f"model_best_bn{network}.pth.tar"
         save_checkpoint(
             {
                 "epoch": epoch + 1,
-                "arch": "Benchmark" + network,
+                "arch": f"Benchmark{network}",
                 "state_dict": model.state_dict(),
                 "best_prec1": best_prec1,
                 "optimizer": optimizer.state_dict(),
@@ -180,6 +181,7 @@ def run_tfe_benchmarks(
             filename=os.path.join(save_checkpoint_dir, checkpoint_file),
             model_best=os.path.join(save_modelbest_dir, model_best_file),
         )
+
     data_dir.cleanup()
     shutil.rmtree(save_checkpoint_dir)
 

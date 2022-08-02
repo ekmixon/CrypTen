@@ -26,8 +26,9 @@ def register_function(name):
             raise ValueError("Cannot register duplicate function ({})".format(name))
         if not issubclass(cls, AutogradFunction):
             raise ValueError(
-                "Function (%s: %s) must extend AutogradFunction" % (name, cls.__name__)
+                f"Function ({name}: {cls.__name__}) must extend AutogradFunction"
             )
+
         cls.name = name
         FUNCTION_REGISTRY[name] = cls
         return cls
@@ -39,9 +40,7 @@ def get_grad_fn(name):
     """
     Returns gradient function for the CrypTen function with the specified name.
     """
-    if name in FUNCTION_REGISTRY:
-        return FUNCTION_REGISTRY[name]
-    return None
+    return FUNCTION_REGISTRY[name] if name in FUNCTION_REGISTRY else None
 
 
 def _ensure_tensor(input):
@@ -408,10 +407,10 @@ class AutogradSqueeze(AutogradFunction):
     def forward(ctx, *args, **kwargs):
 
         # preprocess inputs:
-        assert len(args) >= 1
+        assert args
         if len(args) == 1:
             (input,) = args  # no dimension to squeeze in args
-            dim = kwargs.get("dim", None)
+            dim = kwargs.get("dim")
         else:
             assert len(args) == 2
             assert "dim" not in kwargs
@@ -502,11 +501,7 @@ class AutogradDropout(AutogradFunction):
             )
 
         if not training:
-            if inplace:
-                return input
-            else:
-                return input.clone()
-
+            return input if inplace else input.clone()
         # training mode:
         generator = crypten.generators["global"][input.device]
         random_tensor = torch.rand(
@@ -540,13 +535,9 @@ class AutogradFeatureDropout(AutogradFunction):
 
         # inference mode:
         if not training:
-            if inplace:
-                return input
-            else:
-                return input.clone()
-
+            return input if inplace else input.clone()
         # training mode:
-        feature_dropout_size = input.size()[0:2]
+        feature_dropout_size = input.size()[:2]
         generator = crypten.generators["global"][input.device]
         random_tensor = torch.rand(feature_dropout_size, generator=generator)
         boolean_mask = (random_tensor > p).to(dtype=torch.float)
@@ -1116,7 +1107,7 @@ class AutogradNorm(AutogradFunction):
         if not keepdim and dim is not None:
             grad_output.unsqueeze(dim)
 
-        if p == 2 or p == "fro":
+        if p in [2, "fro"]:
             return grad_output.mul(input.div(norm))
         elif p == float("inf"):
             sign, argmax = input, norm
@@ -1133,10 +1124,10 @@ class AutogradSum(AutogradFunction):
     def forward(ctx, *args, **kwargs):
 
         # preprocess inputs:
-        assert len(args) >= 1
+        assert args
         if len(args) == 1:
             (input,) = args  # no dimension to sum over in args
-            dim = kwargs.get("dim", None)
+            dim = kwargs.get("dim")
         else:
             assert len(args) == 2
             assert "dim" not in kwargs
@@ -1192,10 +1183,10 @@ class AutogradMean(AutogradFunction):
     def forward(ctx, *args, **kwargs):
 
         # preprocess inputs:
-        assert len(args) >= 1
+        assert args
         if len(args) == 1:
             (input,) = args  # no dimension to average over in args
-            dim = kwargs.get("dim", None)
+            dim = kwargs.get("dim")
         else:
             assert len(args) == 2
             assert "dim" not in kwargs
@@ -1230,7 +1221,7 @@ class AutogradVariance(AutogradFunction):
     def forward(ctx, self, *args, **kwargs):
 
         # preprocess inputs:
-        if len(args) == 0:
+        if not args:
             dim = None
             unbiased = kwargs.get("unbiased", False)
             keepdim = False
@@ -1250,11 +1241,7 @@ class AutogradVariance(AutogradFunction):
 
         # Compute square error
         result = (self - mean).square()
-        if dim is None:
-            result = result.sum()
-        else:
-            result = result.sum(dim, keepdim=keepdim)
-
+        result = result.sum() if dim is None else result.sum(dim, keepdim=keepdim)
         # Determine divisor
         divisor = self.nelement() // result.nelement()
         if not unbiased:
@@ -1276,9 +1263,7 @@ class AutogradVariance(AutogradFunction):
             grad_output = grad_output.unsqueeze(dim)
 
         numerator = input.sub(mean).mul(2).mul(grad_output)
-        if divisor == 0:
-            return numerator
-        return numerator.div(divisor)
+        return numerator if divisor == 0 else numerator.div(divisor)
 
 
 @register_function("min")
@@ -1287,7 +1272,7 @@ class AutogradMin(AutogradFunction):
     def forward(ctx, *args, **kwargs):
 
         # preprocess inputs:
-        assert len(args) >= 1
+        assert args
         if len(args) == 1:
             (input,) = args  # no dimension to min over in args
             dim = kwargs.pop("dim", None)  # remove dim from kwargs after obtaining it
@@ -1309,9 +1294,8 @@ class AutogradMin(AutogradFunction):
         ctx.save_multiple_for_backward((dim, keepdim, argmin, one_hot))
         if dim is None:
             return min
-        else:
-            ctx.mark_non_differentiable(argmin)
-            return min, argmin
+        ctx.mark_non_differentiable(argmin)
+        return min, argmin
 
     @staticmethod
     def backward(ctx, grad_output):
@@ -1335,7 +1319,7 @@ class AutogradMax(AutogradFunction):
     def forward(ctx, *args, **kwargs):
 
         # preprocess inputs:
-        assert len(args) >= 1
+        assert args
         if len(args) == 1:
             (input,) = args  # no dimension to max over in args
             dim = kwargs.pop("dim", None)  # remove dim from kwargs after obtaining it
@@ -1358,9 +1342,8 @@ class AutogradMax(AutogradFunction):
         ctx.save_multiple_for_backward((dim, keepdim, argmax, one_hot))
         if dim is None:
             return max
-        else:
-            ctx.mark_non_differentiable(argmax)
-            return max, argmax
+        ctx.mark_non_differentiable(argmax)
+        return max, argmax
 
     @staticmethod
     def backward(ctx, grad_output):
@@ -1424,8 +1407,7 @@ class AutogradLogSoftmax(AutogradFunction):
         if grad_output.dim() == 0 or grad_output.size(dim) == 1:
             return grad_output.new(torch.zeros(grad_output.size()))
         z = probs.exp()
-        result = grad_output - z * grad_output.sum(dim, keepdim=True)
-        return result
+        return grad_output - z * grad_output.sum(dim, keepdim=True)
 
 
 @register_function("pad")
@@ -1433,8 +1415,7 @@ class AutogradPad(AutogradFunction):
     @staticmethod
     def forward(ctx, input, padding, value=0.0, mode="constant"):
         ctx.save_for_backward(padding)
-        output = input.pad(padding, value=value, mode=mode)
-        return output
+        return input.pad(padding, value=value, mode=mode)
 
     @staticmethod
     def backward(ctx, grad_output):

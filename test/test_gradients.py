@@ -71,8 +71,8 @@ class TestGradients:
         test_passed = test_passed.gt(0).all().item() == 1
         if not test_passed:
             logging.info(msg)
-            logging.info("Result %s" % tensor)
-            logging.info("Result - Reference = %s" % (tensor - reference))
+            logging.info(f"Result {tensor}")
+            logging.info(f"Result - Reference = {tensor - reference}")
         self.assertTrue(test_passed, msg=msg)
 
     def _check_forward_backward(
@@ -127,7 +127,7 @@ class TestGradients:
                 reference = reference[0]
                 encrypted_out = encrypted_out[0]
 
-            self._check(encrypted_out, reference, msg + " in forward")
+            self._check(encrypted_out, reference, f"{msg} in forward")
 
             # check backward pass
             grad_output = get_random_test_tensor(
@@ -136,10 +136,10 @@ class TestGradients:
             grad_output_encr = crypten.cryptensor(grad_output)
             reference.backward(grad_output)
             encrypted_out.backward(grad_output_encr)
-            self._check(input_encr.grad, input.grad, msg + " in backward")
+            self._check(input_encr.grad, input.grad, f"{msg} in backward")
             for i, arg_encr in enumerate(args_encr):
                 if crypten.is_encrypted_tensor(arg_encr):
-                    self._check(arg_encr.grad, args[i].grad, msg + " in backward args")
+                    self._check(arg_encr.grad, args[i].grad, f"{msg} in backward args")
 
     def _set_grad_to_zero(self, args, make_private=False):
         """Sets gradients for args to zero
@@ -168,17 +168,17 @@ class TestGradients:
         elif hasattr(F, func_name):
             return getattr(F, func_name)
         else:
-            raise ValueError("unknown PyTorch function: %s" % func_name)
+            raise ValueError(f"unknown PyTorch function: {func_name}")
 
     def test_arithmetic(self):
         """Tests arithmetic functions with broadcasting."""
         arithmetic_functions = ["add", "sub", "mul"]
         for func in arithmetic_functions:
             # Test on operator
-            ofunc = "__" + func + "__"
+            ofunc = f"__{func}__"
 
             # Test both left functions and right functions
-            rfunc = ofunc[:2] + "r" + ofunc[2:]
+            rfunc = f"{ofunc[:2]}r{ofunc[2:]}"
 
             # Test on both float inputs and tensor inputs
             for use_tensor in [False, True]:
@@ -337,15 +337,14 @@ class TestGradients:
             "sqrt",
         ]
         pos_only_functions = ["log", "sqrt"]
-        for func in unary_functions:
-            for size in SIZES:
-                tensor = get_random_test_tensor(size=size, is_float=True)
+        for func, size in itertools.product(unary_functions, SIZES):
+            tensor = get_random_test_tensor(size=size, is_float=True)
 
-                # Make tensor positive when positive inputs are required
-                if func in pos_only_functions:
-                    tensor = tensor.abs()
+            # Make tensor positive when positive inputs are required
+            if func in pos_only_functions:
+                tensor = tensor.abs()
 
-                self._check_forward_backward(func, tensor)
+            self._check_forward_backward(func, tensor)
 
     def test_hardtanh(self):
         tensor = torch.arange(-10, 10, dtype=torch.float32)
@@ -783,7 +782,7 @@ class TestGradients:
         # Create a separate test for dropout since it cannot use the
         # regular forward function
         # There's no need to check backwards since PyTorch backwards fails
-        all_prob_values = [x * 0.2 for x in range(0, 5)]
+        all_prob_values = [x * 0.2 for x in range(5)]
         for dropout_fn in ["dropout", "_feature_dropout"]:
             for prob in all_prob_values:
                 for size in [(5, 10), (5, 10, 15), (5, 10, 15, 20)]:
@@ -810,8 +809,7 @@ class TestGradients:
                         self._check(
                             encr_tensor_out,
                             reference,
-                            "dropout failed with size {}, use_zeros {}, and "
-                            "probability {}".format(size, use_zeros, prob),
+                            f"dropout failed with size {size}, use_zeros {use_zeros}, and probability {prob}",
                         )
 
     def test_batchnorm(self):
@@ -1009,36 +1007,35 @@ class TestGradients:
         dims = [0, 1]
         funcs = ["scatter", "gather"]
 
-        for dim, func in itertools.product(dims, funcs):
-            for size, index in zip(sizes, indices):
-                tensor = get_random_test_tensor(size=size, is_float=True)
-                index = torch.tensor(index).reshape(tensor.shape)
+        for dim, func, (size, index) in itertools.product(dims, funcs, zip(sizes, indices)):
+            tensor = get_random_test_tensor(size=size, is_float=True)
+            index = torch.tensor(index).reshape(tensor.shape)
 
-                tensor.requires_grad = True
-                tensor_encr = crypten.cryptensor(tensor, requires_grad=True)
+            tensor.requires_grad = True
+            tensor_encr = crypten.cryptensor(tensor, requires_grad=True)
 
-                if func == "gather":
-                    reference = getattr(tensor, func)(dim, index)
-                    out_encr = getattr(tensor_encr, func)(dim, index)
-                else:
-                    src = get_random_test_tensor(size=index.shape, is_float=True)
-                    reference = getattr(tensor, func)(dim, index, src)
-                    out_encr = getattr(tensor_encr, func)(dim, index, src)
+            if func == "gather":
+                reference = getattr(tensor, func)(dim, index)
+                out_encr = getattr(tensor_encr, func)(dim, index)
+            else:
+                src = get_random_test_tensor(size=index.shape, is_float=True)
+                reference = getattr(tensor, func)(dim, index, src)
+                out_encr = getattr(tensor_encr, func)(dim, index, src)
 
-                self._check(
-                    out_encr, reference, f"{func} forward failed with index {index}"
-                )
+            self._check(
+                out_encr, reference, f"{func} forward failed with index {index}"
+            )
 
-                grad_out = get_random_test_tensor(size=reference.shape, is_float=True)
-                grad_out_encr = crypten.cryptensor(grad_out)
-                reference.backward(grad_out)
-                out_encr.backward(grad_out_encr)
+            grad_out = get_random_test_tensor(size=reference.shape, is_float=True)
+            grad_out_encr = crypten.cryptensor(grad_out)
+            reference.backward(grad_out)
+            out_encr.backward(grad_out_encr)
 
-                self._check(
-                    tensor_encr.grad,
-                    tensor.grad,
-                    f"{func} backward failed with index {index}",
-                )
+            self._check(
+                tensor_encr.grad,
+                tensor.grad,
+                f"{func} backward failed with index {index}",
+            )
 
     def test_index_select(self):
         """Tests index_select gradients"""

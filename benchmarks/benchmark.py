@@ -445,8 +445,7 @@ class ModelBenchmarks:
 
     @time_me(n_loops=3)
     def predict(self, model, x):
-        y = model(x)
-        return y
+        return model(x)
 
     def time_inference(self):
         """Returns inference time for plain text and CrypTen"""
@@ -486,8 +485,7 @@ class ModelBenchmarks:
         output, y = output.cpu(), y.cpu()
         predicted = (output > threshold).float()
         correct = (predicted == y).sum().float()
-        accuracy = float((correct / y.shape[0]).cpu().numpy())
-        return accuracy
+        return float((correct / y.shape[0]).cpu().numpy())
 
     def evaluate(self):
         """Evaluates accuracy of crypten versus plain text models"""
@@ -621,8 +619,7 @@ def get_args():
         action="store_true",
         help="run advanced model (resnet, transformer, etc.) benchmarks",
     )
-    args = parser.parse_args()
-    return args
+    return parser.parse_args()
 
 
 def multiprocess_caller(args):
@@ -660,12 +657,14 @@ def main():
     args = get_args()
     device = torch.device(args.device)
 
-    if not hasattr(crypten.nn.Module, "to") or not hasattr(crypten.mpc.MPCTensor, "to"):
-        if device.type == "cuda":
-            print(
-                "GPU computation is not supported for this version of CrypTen, benchmark will be skipped"
-            )
-            return
+    if (
+        not hasattr(crypten.nn.Module, "to")
+        or not hasattr(crypten.mpc.MPCTensor, "to")
+    ) and device.type == "cuda":
+        print(
+            "GPU computation is not supported for this version of CrypTen, benchmark will be skipped"
+        )
+        return
 
     benchmarks = [
         FuncBenchmarks(device=device),

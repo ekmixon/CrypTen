@@ -23,7 +23,7 @@ with open("requirements.txt") as f:
 # get version string from module
 init_path = os.path.join(os.path.dirname(__file__), "crypten/__init__.py")
 with open(init_path, "r") as f:
-    version = re.search(r"__version__ = ['\"]([^'\"]*)['\"]", f.read(), re.M).group(1)
+    version = re.search(r"__version__ = ['\"]([^'\"]*)['\"]", f.read(), re.M)[1]
 
 # Set key package information.
 DISTNAME = "crypten"

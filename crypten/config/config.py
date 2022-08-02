@@ -51,10 +51,7 @@ class CrypTenConfig(object):
         self.config = OmegaConf.create(config_dict)
 
     def set_config(self, config):
-        if isinstance(config, CrypTenConfig):
-            self.config = config.config
-        else:
-            self.config = config
+        self.config = config.config if isinstance(config, CrypTenConfig) else config
 
     def __getattribute__(self, name):
         try:

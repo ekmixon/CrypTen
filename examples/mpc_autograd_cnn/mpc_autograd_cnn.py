@@ -35,16 +35,8 @@ def run_mpc_autograd_cnn(
 
     # assumes at least two parties exist
     # broadcast dummy data with same shape to remaining parties
-    if rank == 0:
-        x_alice = data_alice
-    else:
-        x_alice = torch.empty(data_alice.size())
-
-    if rank == 1:
-        x_bob = data_bob
-    else:
-        x_bob = torch.empty(data_bob.size())
-
+    x_alice = data_alice if rank == 0 else torch.empty(data_alice.size())
+    x_bob = data_bob if rank == 1 else torch.empty(data_bob.size())
     # encrypt
     x_alice_enc = crypten.cryptensor(x_alice, src=0)
     x_bob_enc = crypten.cryptensor(x_bob, src=1)

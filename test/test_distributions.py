@@ -38,8 +38,9 @@ class TestDistributions(object):
             sample = func(size)
 
             self.assertTrue(
-                sample.size() == size, "Incorrect size for %s distribution" % name
+                sample.size() == size, f"Incorrect size for {name} distribution"
             )
+
 
             plain_sample = sample.get_plain_text().float()
             mean = plain_sample.mean()
@@ -55,12 +56,13 @@ class TestDistributions(object):
             if lb is not None:
                 self.assertTrue(
                     plain_sample.ge(lb).all(),
-                    "Sample detected below lower bound for %s distribution" % name,
+                    f"Sample detected below lower bound for {name} distribution",
                 )
+
             if ub is not None:
                 self.assertTrue(
                     plain_sample.le(ub).all(),
-                    "Sample detected below lower bound for %s distribution" % name,
+                    f"Sample detected below lower bound for {name} distribution",
                 )
 
     def test_uniform(self):

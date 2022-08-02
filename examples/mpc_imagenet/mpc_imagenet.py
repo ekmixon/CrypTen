@@ -34,9 +34,10 @@ def run_experiment(
 
     crypten.init()
     # check inputs:
-    assert hasattr(models, model_name), (
-        "torchvision does not provide %s model" % model_name
-    )
+    assert hasattr(
+        models, model_name
+    ), f"torchvision does not provide {model_name} model"
+
     if imagenet_folder is None:
         imagenet_folder = tempfile.gettempdir()
         download = True

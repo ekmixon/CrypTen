@@ -155,12 +155,7 @@ def reciprocal(self, input_in_01=False):
 
     if method == "NR":
         nr_iters = cfg.functions.reciprocal_nr_iters
-        if initial is None:
-            # Initialization to a decent estimate (found by qualitative inspection):
-            #                1/x = 3exp(1 - 2x) + 0.003
-            result = 3 * (1 - 2 * self).exp() + 0.003
-        else:
-            result = initial
+        result = 3 * (1 - 2 * self).exp() + 0.003 if initial is None else initial
         for _ in range(nr_iters):
             if hasattr(result, "square"):
                 result += result - result.square().mul_(self)
@@ -315,10 +310,9 @@ def sigmoid(self):
         ):
             pos_output = denominator.reciprocal()
 
-        result = pos_output.where(1 - ltz, 1 - pos_output)
         # TODO: Support addition with different encoder scales
         # result = pos_output + ltz - 2 * pos_output * ltz
-        return result
+        return pos_output.where(1 - ltz, 1 - pos_output)
     else:
         raise ValueError(f"Unrecognized method {method} for sigmoid")
 
@@ -441,5 +435,4 @@ def log_softmax(self, dim, **kwargs):
     maximum_value = self.max(dim, keepdim=True)[0]
     logits = self - maximum_value
     normalize_term = exp(logits).sum(dim, keepdim=True)
-    result = logits - normalize_term.log()
-    return result
+    return logits - normalize_term.log()

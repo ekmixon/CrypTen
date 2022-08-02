@@ -40,9 +40,7 @@ def online_learner(
     for sample in sampler():
         start_t = time.time()
         # unpack sample:
-        assert "context" in sample and "rewards" in sample, (
-            "invalid sample: %s" % sample
-        )
+        assert "context" in sample and "rewards" in sample, f"invalid sample: {sample}"
         context = sample["context"].to(dtype=dtype, device=device)
         rewards = sample["rewards"].to(dtype=dtype, device=device)
         num_features, num_arms = context.nelement(), rewards.nelement()

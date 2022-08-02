@@ -30,15 +30,11 @@ def dropout(self, p=0.5, training=True, inplace=False):
         )
 
     if not training:
-        if inplace:
-            return self
-        else:
-            return self.clone()
-
+        return self if inplace else self.clone()
     rand_tensor = crypten.rand(self.size(), device=self.device)
     dropout_tensor = rand_tensor > p
-    if inplace:
-        result_tensor = self.mul_(dropout_tensor).div_(1 - p)
-    else:
-        result_tensor = self.mul(dropout_tensor).div_(1 - p)
-    return result_tensor
+    return (
+        self.mul_(dropout_tensor).div_(1 - p)
+        if inplace
+        else self.mul(dropout_tensor).div_(1 - p)
+    )

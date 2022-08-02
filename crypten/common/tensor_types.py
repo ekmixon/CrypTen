@@ -12,10 +12,9 @@ from crypten.cuda import CUDALongTensor
 # helper functions that determine if input is float, int, or base tensor:
 def _is_type_tensor(tensor, types):
     """Checks whether the elements of the input tensor are of a given type"""
-    if is_tensor(tensor):
-        if any(tensor.dtype == type_ for type_ in types):
-            return True
-    return False
+    return bool(
+        is_tensor(tensor) and any(tensor.dtype == type_ for type_ in types)
+    )
 
 
 def is_tensor(tensor):

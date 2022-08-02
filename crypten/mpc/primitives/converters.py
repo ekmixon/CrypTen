@@ -79,4 +79,4 @@ def convert(tensor, ptype, **kwargs):
     elif isinstance(tensor, BinarySharedTensor) and ptype == Ptype.arithmetic:
         return _B2A(tensor, **kwargs)
     else:
-        raise TypeError("Cannot convert %s to %s" % (type(tensor), ptype.__name__))
+        raise TypeError(f"Cannot convert {type(tensor)} to {ptype.__name__}")

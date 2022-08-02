@@ -46,8 +46,8 @@ class TestAutograd(object):
             test_passed = (tensor == reference).all().item() == 1
         if not test_passed:
             logging.info(msg)
-            logging.info("Result %s" % tensor)
-            logging.info("Result - Reference = %s" % (tensor - reference))
+            logging.info(f"Result {tensor}")
+            logging.info(f"Result - Reference = {tensor - reference}")
         self.assertTrue(test_passed, msg=msg)
 
     def test_non_differentiable_marking(self):
@@ -137,7 +137,7 @@ class TestAutograd(object):
 
         # check that registering new classes works:
         for func_name in ["mock_func1", "mock_func2", "mock_func3"]:
-            cls = type("%sName" % func_name, (AutogradFunction,), {})
+            cls = type(f"{func_name}Name", (AutogradFunction,), {})
             gradients.register_function(func_name)(cls)
             grad_fn = gradients.get_grad_fn(func_name)
             self.assertEqual(grad_fn, cls)
@@ -145,7 +145,7 @@ class TestAutograd(object):
 
         # check that existing functions cannot be overwritten:
         for func_name in ["add", "sub", "view"]:
-            cls = type("%sName" % func_name, (AutogradFunction,), {})
+            cls = type(f"{func_name}Name", (AutogradFunction,), {})
             with self.assertRaises(ValueError):
                 gradients.register_function(func_name)(cls)
 
@@ -155,7 +155,7 @@ class TestAutograd(object):
         index = torch.tensor([[[1, 2], [3, 4]], [[4, 2], [1, 3]]], dtype=torch.long)
 
         # Test when dimension!=None
-        for dimension in range(0, 4):
+        for dimension in range(4):
             tensor = get_random_test_tensor(size=tensor_size, is_float=True)
             ref_forward = torch.from_numpy(tensor.numpy().take(index, dimension))
             encrypted_tensor = crypten.cryptensor(tensor)
@@ -398,7 +398,7 @@ class TestAutograd(object):
             self.assertTrue(encr_output.requires_grad, "requires_grad incorrect")
             output.backward()
             encr_output.backward()
-            self._check(encr_input.grad, input.grad, "%s backward failed" % func_name)
+            self._check(encr_input.grad, input.grad, f"{func_name} backward failed")
 
     def test_autograd(self):
         """Tests autograd graph construction and backprop."""

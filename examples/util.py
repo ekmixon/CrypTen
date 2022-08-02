@@ -51,11 +51,9 @@ def kmeans_inference(data, clusters, hard=True, bandwidth=1.0):
 
     # compute assignments and return:
     if hard:
-        assignments = distances.argmin(1)
-        return assignments
+        return distances.argmin(1)
     else:
-        similarities = distances.mul_(-1.0 / (2.0 * bandwidth)).exp_()
-        return similarities
+        return distances.mul_(-1.0 / (2.0 * bandwidth)).exp_()
 
 
 def kmeans(data, K, max_iter=100):
@@ -121,7 +119,7 @@ def process_mnist_files(raw_dir, processed_dir):
         file.
         If the zipped data file does not exist in raw_dir, it returns None.
         """
-        data_file_archive = os.path.join(raw_dir, data_file_name + ".gz")
+        data_file_archive = os.path.join(raw_dir, f"{data_file_name}.gz")
         if os.path.exists(data_file_archive):
             datasets.utils.extract_archive(data_file_archive, processed_dir)
             return os.path.join(processed_dir, data_file_name)

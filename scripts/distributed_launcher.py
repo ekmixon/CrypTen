@@ -26,9 +26,9 @@ def main():
     processes = []
 
     # Use random file so multiple jobs can be run simultaneously
-    INIT_METHOD = "file:///tmp/crypten-rendezvous-{}".format(uuid.uuid1())
+    INIT_METHOD = f"file:///tmp/crypten-rendezvous-{uuid.uuid1()}"
 
-    for rank in range(0, args.world_size):
+    for rank in range(args.world_size):
         # each process's rank
         current_env["RANK"] = str(rank)
         current_env["RENDEZVOUS"] = INIT_METHOD

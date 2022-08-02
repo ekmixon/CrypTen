@@ -83,8 +83,9 @@ def connect_to_instance(instance, keypath, username, http_proxy=None):
         # paramiko.ProxyCommand does not do string substitution for %h %p,
         # so 'nc --proxy-type http --proxy fwdproxy:8080 %h %p' would not work!
         proxy = paramiko.ProxyCommand(
-            f"nc --proxy-type http --proxy {http_proxy} {ip_address} {22}"
+            f"nc --proxy-type http --proxy {http_proxy} {ip_address} 22"
         )
+
         proxy.settimeout(300)
     client = paramiko.SSHClient()
     client.load_system_host_keys()
@@ -166,15 +167,13 @@ def main():
 
         assert len(instance_ids) == len(
             ssh_key_files
-        ), "{} instance ids are provided, but {} SSH keys found.".format(
-            len(instance_ids), len(ssh_key_files)
-        )
+        ), f"{len(instance_ids)} instance ids are provided, but {len(ssh_key_files)} SSH keys found."
+
 
         assert len(instance_ids) == len(
             regions
-        ), "{} instance ids are provided, but {} regions found.".format(
-            len(instance_ids), len(regions)
-        )
+        ), f"{len(instance_ids)} instance ids are provided, but {len(regions)} regions found."
+
 
         for i, region in enumerate(regions):
             session = boto3.session.Session(
@@ -197,15 +196,15 @@ def main():
 
         assert (
             len(ssh_key_files) == 1
-        ), "1 region is detected, but {} SSH keys found.".format(len(ssh_key_files))
+        ), f"1 region is detected, but {len(ssh_key_files)} SSH keys found."
+
 
         ssh_key_files = [ssh_key_files[0] for _ in range(len(instances))]
 
     assert len(instance_ids) == len(
         instances
-    ), "{} instance ids are provided, but {} found.".format(
-        len(instance_ids), len(instances)
-    )
+    ), f"{len(instance_ids)} instance ids are provided, but {len(instances)} found."
+
 
     # Only print the public IP addresses of the instances.
     # Then do nothing else and return.
@@ -264,8 +263,7 @@ def main():
     }
 
     with concurrent.futures.ThreadPoolExecutor(max_workers=world_size) as executor:
-        rank = 0
-        for instance_id, client in client_dict.items():
+        for rank, (instance_id, client) in enumerate(client_dict.items()):
             environment["RANK"] = str(rank)
             # TODO: Although paramiko.SSHClient.exec_command() can accept
             # an argument `environment`, it seems not to take effect in
@@ -277,17 +275,10 @@ def main():
                 [f"export {key}={value}" for (key, value) in environment.items()]
             )
             prepare_cmd = f"{args.prepare_cmd}; " if args.prepare_cmd else ""
-            cmd = "{}; {} {} {} {}".format(
-                environment_cmd,
-                f"cd {remote_dir} ;",
-                prepare_cmd,
-                f"./{script_basename}",
-                " ".join(args.training_script_args),
-            )
+            cmd = f'{environment_cmd}; cd {remote_dir} ; {prepare_cmd} ./{script_basename} {" ".join(args.training_script_args)}'
+
             print(f"Run command: {cmd}")
             executor.submit(run_command, instance_id, client, cmd, environment)
-            rank += 1
-
     # Cleanup temp dir.
     for instance_id, client in client_dict.items():
         run_command(instance_id, client, f"rm -rf {remote_dir}")

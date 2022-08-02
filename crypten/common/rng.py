@@ -25,9 +25,7 @@ def generate_random_ring_element(size, ring_size=(2 ** 64), generator=None, **kw
         dtype=torch.long,
         **kwargs
     )
-    if rand_element.is_cuda:
-        return CUDALongTensor(rand_element)
-    return rand_element
+    return CUDALongTensor(rand_element) if rand_element.is_cuda else rand_element
 
 
 def generate_kbit_random_tensor(size, bitlength=None, generator=None, **kwargs):
@@ -44,6 +42,4 @@ def generate_kbit_random_tensor(size, bitlength=None, generator=None, **kwargs):
     rand_tensor = torch.randint(
         0, 2 ** bitlength, size, generator=generator, dtype=torch.long, **kwargs
     )
-    if rand_tensor.is_cuda:
-        return CUDALongTensor(rand_tensor)
-    return rand_tensor
+    return CUDALongTensor(rand_tensor) if rand_tensor.is_cuda else rand_tensor

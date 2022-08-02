@@ -50,7 +50,7 @@ class BaseOT:
 
         alphas = []
         masks_for_message1s = []
-        for _i in range(len(message1s)):
+        for message1 in message1s:
             # pick a random element from Z_p
             alpha = random.randint(0, self.__prime - 1)
             alphas.append(alpha)
@@ -77,7 +77,7 @@ class BaseOT:
         masks_for_choices = []
 
         # recv mask_for_choice
-        for _i in range(len(message1s)):
+        for message1_ in message1s:
             mask_for_choice = comm.get().recv_obj(self.partner_rank)
             masks_for_choices.append(mask_for_choice)
 
@@ -91,9 +91,9 @@ class BaseOT:
             ).hexdigest()
 
             if len(pad0) < len(message0s[i]):
-                raise (str(i) + "-th message0 is too long")
+                raise f"{str(i)}-th message0 is too long"
             if len(pad1) < len(message1s[i]):
-                raise (str(i) + "-th message1 is too long")
+                raise f"{str(i)}-th message1 is too long"
             # encrypt with one time pad
             message0_enc = self.string_xor(pad0, message0s[i])
             message1_enc = self.string_xor(pad1, message1s[i])
@@ -111,7 +111,7 @@ class BaseOT:
 
         betas = []
         masks_for_choices = []
-        for _i in range(len(choices)):
+        for choice in choices:
             # pick a random element from Z_p
             beta = random.randint(0, self.__prime - 1)
             mask_for_choice = pow(self.__generator, beta, self.__prime)

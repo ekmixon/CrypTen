@@ -113,8 +113,7 @@ class Module:
                 if module is None:
                     continue
                 submodule_prefix = prefix + ("." if prefix else "") + name
-                for m in module.named_modules(memo, submodule_prefix):
-                    yield m
+                yield from module.named_modules(memo, submodule_prefix)
 
     def register_parameter(self, name, param, requires_grad=True):
         """
@@ -122,7 +121,7 @@ class Module:
         parameters in child modules.
         """
         if name in self._parameters or hasattr(self, name):
-            raise ValueError("Parameter or field %s already exists." % name)
+            raise ValueError(f"Parameter or field {name} already exists.")
         param.requires_grad = requires_grad
         self._parameters[name] = param
         setattr(self, name, param)
@@ -133,7 +132,7 @@ class Module:
         parameters in child modules.
         """
         if name not in self._parameters or not hasattr(self, name):
-            raise ValueError("Parameter %s does not exist." % name)
+            raise ValueError(f"Parameter {name} does not exist.")
         self._parameters[name] = param
         setattr(self, name, param)
 
@@ -152,11 +151,12 @@ class Module:
         # functionality is only supported when parameters are MPCTensors:
         assert self.encrypted, "can only set parameters from shares in encrypted models"
         if name not in self._parameters or not hasattr(self, name):
-            raise ValueError("Parameter %s does not exist." % name)
+            raise ValueError(f"Parameter {name} does not exist.")
         cls = type(self._parameters[name])
         assert hasattr(
             self._parameters[name], "from_shares"
-        ), "parameter type {} does not supporting setting from shares".format(cls)
+        ), f"parameter type {cls} does not supporting setting from shares"
+
 
         # load parameters from shares:
         self._parameters[name] = cls.from_shares(share, **kwargs)
@@ -188,11 +188,11 @@ class Module:
             (string, CrypTensor or torch.Tensor): Tuple containing the name and parameter
         """
         for name, param in self._parameters.items():
-            param_name = name if prefix is None else prefix + "." + name
+            param_name = name if prefix is None else f"{prefix}.{name}"
             yield param_name, param
         if recurse:
             for module_name, module in self.named_children():
-                pre = module_name if prefix is None else prefix + "." + module_name
+                pre = module_name if prefix is None else f"{prefix}.{module_name}"
                 yield from module.named_parameters(recurse=recurse, prefix=pre)
 
     def _save_to_state_dict(self, destination, prefix, keep_vars):
@@ -242,10 +242,10 @@ class Module:
 
         # in strict mode, check for missing keys in the state_dict:
         if strict:
-            for name in local_state.keys():
+            for name in local_state:
                 key = prefix + name
                 if key not in state_dict:
-                    raise ValueError("Key {} not found in state dict.".format(key))
+                    raise ValueError(f"Key {key} not found in state dict.")
 
         # loop over parameters / buffers in module:
         for name, param in local_state.items():
@@ -255,11 +255,8 @@ class Module:
             # size in state_dict should match size of parameters:
             if input_param.size() != param.size():
                 raise ValueError(
-                    "Size mismatch for {}: copying a param with"
-                    "shape {} from checkpoint, the shape in"
-                    "current model is {}.".format(key, input_param.size(), param.size())
+                    f"Size mismatch for {key}: copying a param withshape {input_param.size()} from checkpoint, the shape incurrent model is {param.size()}."
                 )
-                continue
 
             # cannot copy encrypted tensors into unencrypted models and vice versa:
             param_encrypted = isinstance(input_param, crypten.CrypTensor)
@@ -351,7 +348,7 @@ class Module:
         they are not updated by parameter updates.
         """
         if name in self._buffers or hasattr(self, name):
-            raise ValueError("Buffer or field %s already exists." % name)
+            raise ValueError(f"Buffer or field {name} already exists.")
         buffer.requires_grad = False
         self._buffers[name] = buffer
         setattr(self, name, buffer)
@@ -362,7 +359,7 @@ class Module:
         parameters in child modules.
         """
         if name not in self._buffers or not hasattr(self, name):
-            raise ValueError("Buffer %s does not exist." % name)
+            raise ValueError(f"Buffer {name} does not exist.")
         self._buffers[name] = buffer
         setattr(self, name, buffer)
 
@@ -394,11 +391,11 @@ class Module:
             >>>        print(buf.size())
         """
         for name, buffer in self._buffers.items():
-            buffer_name = name if prefix is None else prefix + "." + name
+            buffer_name = name if prefix is None else f"{prefix}.{name}"
             yield buffer_name, buffer
         if recurse:
             for module_name, module in self.named_children():
-                pre = module_name if prefix is None else prefix + "." + module_name
+                pre = module_name if prefix is None else f"{prefix}.{module_name}"
                 yield from module.named_buffers(recurse=recurse, prefix=pre)
 
     def to(self, *args, **kwargs):
@@ -469,39 +466,38 @@ class Module:
 
     def encrypt(self, mode=True, src=0):
         """Encrypts the model."""
-        if mode != self.encrypted:
+        if mode == self.encrypted:
+            return self
+        # encrypt / decrypt parameters:
+        self.encrypted = mode
+        for name, param in self.named_parameters(recurse=False):
+            requires_grad = param.requires_grad
+            if mode:  # encrypt parameter
+                self.set_parameter(
+                    name,
+                    crypten.cryptensor(
+                        param, **{"src": src}, requires_grad=requires_grad
+                    ),
+                )
+            else:  # decrypt parameter
+                self.set_parameter(name, param.get_plain_text())
+                self._parameters[name].requires_grad = requires_grad
 
-            # encrypt / decrypt parameters:
-            self.encrypted = mode
-            for name, param in self.named_parameters(recurse=False):
-                requires_grad = param.requires_grad
-                if mode:  # encrypt parameter
-                    self.set_parameter(
-                        name,
-                        crypten.cryptensor(
-                            param, **{"src": src}, requires_grad=requires_grad
-                        ),
-                    )
-                else:  # decrypt parameter
-                    self.set_parameter(name, param.get_plain_text())
-                    self._parameters[name].requires_grad = requires_grad
+        # encrypt / decrypt buffers:
+        for name, buffer in self.named_buffers(recurse=False):
+            # encrypt buffer only if it's a torch tensor (not shapes)
+            if mode and torch.is_tensor(buffer):
+                self.set_buffer(
+                    name,
+                    crypten.cryptensor(buffer, **{"src": src}, requires_grad=False),
+                )
+            # decrypt buffer if it's a cryptensor
+            elif isinstance(buffer, crypten.CrypTensor):
+                self.set_buffer(name, buffer.get_plain_text())
+                self._buffers[name].requires_grad = False
 
-            # encrypt / decrypt buffers:
-            for name, buffer in self.named_buffers(recurse=False):
-                # encrypt buffer only if it's a torch tensor (not shapes)
-                if mode and torch.is_tensor(buffer):
-                    self.set_buffer(
-                        name,
-                        crypten.cryptensor(buffer, **{"src": src}, requires_grad=False),
-                    )
-                # decrypt buffer if it's a cryptensor
-                elif isinstance(buffer, crypten.CrypTensor):
-                    self.set_buffer(name, buffer.get_plain_text())
-                    self._buffers[name].requires_grad = False
-
-            # apply encryption recursively:
-            return self._apply(lambda m: m.encrypt(mode=mode, src=src))
-        return self
+        # apply encryption recursively:
+        return self._apply(lambda m: m.encrypt(mode=mode, src=src))
 
     def decrypt(self):
         """Decrypts model."""
@@ -550,7 +546,7 @@ class Module:
             if name in buffers:
                 return buffers[name]
         raise AttributeError(
-            "'{}' object has no attribute '{}'".format(type(self).__name__, name)
+            f"'{type(self).__name__}' object has no attribute '{name}'"
         )
 
     def __setattr__(self, name, value):
@@ -591,7 +587,7 @@ class Module:
 
     def add_module(self, name, module):
         """Adds and registers a submodule with a given name"""
-        assert name not in self._modules.keys(), "Module %s already exists." % name
+        assert name not in self._modules.keys(), f"Module {name} already exists."
         self.register_module(name, module)
 
 
@@ -646,7 +642,7 @@ class Graph(Container):
 
         Both `input_names` and `output_names` are expected to be ordered.
         """
-        assert name not in self._graph, "Module %s already exists." % name
+        assert name not in self._graph, f"Module {name} already exists."
         self.register_module(name, module)
         if input_names is not None:
             self._graph[name] = input_names
@@ -683,7 +679,7 @@ class Graph(Container):
         def _clear_unused_values():
             """Clear values that are no longer needed (to save memory)."""
             remove_keys = []
-            for remove_key in values.keys():
+            for remove_key in values:
                 can_be_removed = True
 
                 # we cannot remove a value if it is still needed:
@@ -697,8 +693,6 @@ class Graph(Container):
             # remove all values we no longer need:
             for remove_key in remove_keys:
                 del values[remove_key]
-            # NOTE: We maintain inputs_available[remove_key] as True to
-            # prevent re-computation of the node.
 
         # perform forward pass:
         for input_name in self.input_names:
@@ -762,8 +756,6 @@ class Sequential(Graph):
                 "passing crypten.nn.Sequential a list is deprecated. Please "
                 "pass unpacked arguments (e.g. Sequential(*my_modules))."
             )
-            module_list = module_list[0]
-
         for idx, module in enumerate(module_list):
             if isinstance(module, OrderedDict):
                 for key, val in module.items():
@@ -1251,10 +1243,7 @@ class Slice(Module):
         super().__init__()
         self.starts = starts
         self.ends = ends
-        if axes is None:
-            self.axes = list(range(len(starts)))
-        else:
-            self.axes = axes
+        self.axes = list(range(len(starts))) if axes is None else axes
 
     def forward(self, x):
         output = x
@@ -1306,9 +1295,7 @@ class Cast(Module):
         self.dtype = dtype
 
     def forward(self, x):
-        if torch.is_tensor(x):
-            return x.to(dtype=self.dtype)
-        return x  # this is a no-op as MPCTensors do not know their dtype
+        return x.to(dtype=self.dtype) if torch.is_tensor(x) else x
 
     @staticmethod
     def from_onnx(attributes=None):
@@ -1345,9 +1332,7 @@ class Equal(Module):
 
     def forward(self, x):
         x1, x2 = tuple(x)
-        if x1.size() != x2.size():
-            return False
-        return x1.eq(x2)
+        return False if x1.size() != x2.size() else x1.eq(x2)
 
     @staticmethod
     def from_onnx(attributes=None):
@@ -1384,12 +1369,11 @@ class Flatten(Module):
     def forward(self, x):
         if self.axis == 0:
             return x.view(1, -1)
-        else:
-            assert self.axis <= x.dim(), "axis must not be larger than dimension"
-            prod = 1
-            for i in range(self.axis):
-                prod *= x.size(i)
-            return x.view(prod, -1)
+        assert self.axis <= x.dim(), "axis must not be larger than dimension"
+        prod = 1
+        for i in range(self.axis):
+            prod *= x.size(i)
+        return x.view(prod, -1)
 
     @staticmethod
     def from_onnx(attributes=None):
@@ -1417,10 +1401,7 @@ class Shape(Module):
 
     def forward(self, x, dim=None):
         dim = dim if dim is not None else self.dim
-        if dim is None:
-            size = torch.tensor(x.size())
-        else:
-            size = torch.tensor(x.size(dim))
+        size = torch.tensor(x.size()) if dim is None else torch.tensor(x.size(dim))
         return size
 
     @staticmethod
@@ -1646,16 +1627,14 @@ class Gather(Module):
 
         # CrypTensor input
         if crypten.is_encrypted_tensor(tensor):
-            result = tensor.take(indices, self.dimension)
+            return tensor.take(indices, self.dimension)
 
-        # Torch tensor input
         elif self.dimension is None or tensor.dim() == 0:
-            result = torch.take(tensor, indices)
+            return torch.take(tensor, indices)
         else:
             all_indices = [slice(0, x) for x in tensor.size()]
             all_indices[self.dimension] = indices
-            result = tensor[all_indices]
-        return result
+            return tensor[all_indices]
 
     @staticmethod
     def from_onnx(attributes=None):
@@ -1831,12 +1810,10 @@ class MatMul(Module):
 
     def forward(self, x):
         if hasattr(self, "weight"):
-            output = x.matmul(self.weight)
-        else:
-            assert isinstance(x, (list, tuple)), "input must be list or tuple"
-            assert len(x) == 2, "input must contain two tensors"
-            output = x[0].matmul(x[1])
-        return output
+            return x.matmul(self.weight)
+        assert isinstance(x, (list, tuple)), "input must be list or tuple"
+        assert len(x) == 2, "input must contain two tensors"
+        return x[0].matmul(x[1])
 
     @staticmethod
     def from_onnx(attributes=None):
@@ -2263,7 +2240,7 @@ class Hardtanh(Module):
         return input.hardtanh(self.min_val, self.max_val)
 
     def extra_repr(self):
-        return "min_val={}, max_val={}".format(self.min_val, self.max_val)
+        return f"min_val={self.min_val}, max_val={self.max_val}"
 
     @staticmethod
     def from_onnx(attributes=None):
@@ -2440,7 +2417,7 @@ class _Pool2d(Module):
         elif self.pool_type == "max":
             return x.max_pool2d(*args, **kwargs)
         else:
-            raise ValueError("Unknown pooling type: %s" % self.pool_type)
+            raise ValueError(f"Unknown pooling type: {self.pool_type}")
 
     @staticmethod
     def from_onnx(pool_type, attributes=None):
@@ -2469,7 +2446,7 @@ class _Pool2d(Module):
         elif pool_type == "max":
             return MaxPool2d(*args, **kwargs)
         else:
-            raise ValueError("Unknown pooling type: %s" % pool_type)
+            raise ValueError(f"Unknown pooling type: {pool_type}")
 
 
 class AvgPool2d(_Pool2d):
@@ -2572,7 +2549,7 @@ class AdaptiveAvgPool2d(Module):
         self.output_size = output_size
 
     def extra_repr(self) -> str:
-        return "output_size={}".format(self.output_size)
+        return f"output_size={self.output_size}"
 
     def forward(self, input_tensor, output_size=None):
         if output_size is None:
@@ -2625,7 +2602,7 @@ class AdaptiveMaxPool2d(Module):
         self.output_size = output_size
 
     def extra_repr(self) -> str:
-        return "output_size={}".format(self.output_size)
+        return f"output_size={self.output_size}"
 
     def forward(self, input_tensor, output_size=None):
         if output_size is None:
@@ -2691,14 +2668,13 @@ class BatchNormalization(Module):
         input, weight, bias, running_mean, running_var = x
 
         # in inference mode, we may be able to re-use inverse variance:
-        if not self.train:
-            if id(running_var) != self._running_var_id:
-                self.inv_var = self._compute_inv_var(running_var)
-                self._running_var_id = id(running_var)
-        else:
+        if self.train:
             self.inv_var = None
             self._running_var_id = None
 
+        elif id(running_var) != self._running_var_id:
+            self.inv_var = self._compute_inv_var(running_var)
+            self._running_var_id = id(running_var)
         # perform batch normalization:
         output = input.batchnorm(
             weight,
@@ -2717,11 +2693,11 @@ class BatchNormalization(Module):
 
     def _compute_inv_var(self, running_var):
         """Computes inverse variance."""
-        if isinstance(running_var, crypten.CrypTensor):
-            inv_var = running_var.add(self.eps).inv_sqrt()
-        else:
-            inv_var = running_var.add(self.eps).sqrt().reciprocal()
-        return inv_var
+        return (
+            running_var.add(self.eps).inv_sqrt()
+            if isinstance(running_var, crypten.CrypTensor)
+            else running_var.add(self.eps).sqrt().reciprocal()
+        )
 
     @staticmethod
     def from_onnx(attributes=None):

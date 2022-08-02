@@ -32,44 +32,43 @@ class DistributedCommunicator(Communicator):
 
     def __init__(self, init_ttp=False):
         # no need to do anything if we already initialized the communicator:
-        if not dist.is_initialized():
+        if dist.is_initialized():
+            return
             # get configuration variables from environmens:
-            for key in ["distributed_backend", "rendezvous", "world_size", "rank"]:
-                if key.upper() not in os.environ:
-                    raise ValueError("Environment variable %s must be set." % key)
-                setattr(self, key.lower(), os.environ[key.upper()])
+        for key in ["distributed_backend", "rendezvous", "world_size", "rank"]:
+            if key.upper() not in os.environ:
+                raise ValueError(f"Environment variable {key} must be set.")
+            setattr(self, key.lower(), os.environ[key.upper()])
 
-            # make sure world size and rank are integers; comms stats are reset:
-            self.world_size = int(self.world_size)
-            self.rank = int(self.rank)
-            self.reset_communication_stats()
-            self._name = f"rank{self.rank}"
+        # make sure world size and rank are integers; comms stats are reset:
+        self.world_size = int(self.world_size)
+        self.rank = int(self.rank)
+        self.reset_communication_stats()
+        self._name = f"rank{self.rank}"
 
-            # logging:
-            logging.info("==================")
-            logging.info("DistributedCommunicator with rank %d" % self.rank)
-            logging.info("==================")
+        # logging:
+        logging.info("==================")
+        logging.info("DistributedCommunicator with rank %d" % self.rank)
+        logging.info("==================")
 
-            # initialize process group:
-            total_ws = self.world_size + 1 if init_ttp else self.world_size
-            dist.init_process_group(
-                backend=self.distributed_backend,
-                init_method=self.rendezvous,
-                world_size=total_ws,
-                rank=self.rank,
-            )
-            self.ttp_group = dist.new_group(list(range(total_ws)))
-            if total_ws > 1:
-                self.ttp_comm_group = dist.new_group([0, total_ws - 1])
-            self.main_group = dist.new_group(list(range(self.world_size)))
-            self.ttp_initialized = init_ttp
-            logging.info("World size = %d" % self.world_size)
+        # initialize process group:
+        total_ws = self.world_size + 1 if init_ttp else self.world_size
+        dist.init_process_group(
+            backend=self.distributed_backend,
+            init_method=self.rendezvous,
+            world_size=total_ws,
+            rank=self.rank,
+        )
+        self.ttp_group = dist.new_group(list(range(total_ws)))
+        if total_ws > 1:
+            self.ttp_comm_group = dist.new_group([0, total_ws - 1])
+        self.main_group = dist.new_group(list(range(self.world_size)))
+        self.ttp_initialized = init_ttp
+        logging.info("World size = %d" % self.world_size)
 
     @classmethod
     def is_initialized(cls):
-        if cls.instance is None:
-            return False
-        return dist.is_initialized()
+        return False if cls.instance is None else dist.is_initialized()
 
     @classmethod
     def initialize(cls, rank, world_size, init_ttp=False):
@@ -83,8 +82,9 @@ class DistributedCommunicator(Communicator):
 
         # set default arguments for communicator:
         randomized_path = "crypten-".join(
-            random.choice(string.ascii_letters) for i in range(10)
+            random.choice(string.ascii_letters) for _ in range(10)
         )
+
         default_args = {
             "DISTRIBUTED_BACKEND": "gloo",
             "RENDEZVOUS": f"file:///tmp/{randomized_path}",
@@ -165,14 +165,14 @@ class DistributedCommunicator(Communicator):
 
         if batched:
             assert isinstance(input, list), "batched reduce input must be a list"
-            reqs = []
             result = [x.clone().data for x in input]
-            for tensor in result:
-                reqs.append(
-                    dist.reduce(
-                        tensor.data, dst, op=op, group=self.main_group, async_op=True
-                    )
+            reqs = [
+                dist.reduce(
+                    tensor.data, dst, op=op, group=self.main_group, async_op=True
                 )
+                for tensor in result
+            ]
+
             for req in reqs:
                 req.wait()
         else:
@@ -191,14 +191,14 @@ class DistributedCommunicator(Communicator):
 
         if batched:
             assert isinstance(input, list), "batched reduce input must be a list"
-            reqs = []
             result = [x.clone() for x in input]
-            for tensor in result:
-                reqs.append(
-                    dist.all_reduce(
-                        tensor.data, op=op, group=self.main_group, async_op=True
-                    )
+            reqs = [
+                dist.all_reduce(
+                    tensor.data, op=op, group=self.main_group, async_op=True
                 )
+                for tensor in result
+            ]
+
             for req in reqs:
                 req.wait()
         else:
@@ -214,12 +214,12 @@ class DistributedCommunicator(Communicator):
         """Gathers a list of tensors in a single party."""
         assert dist.is_initialized(), "initialize the communicator first"
         if self.get_rank() == dst:
-            result = []
             device = tensor.data.device
-            for _ in range(self.get_world_size()):
-                result.append(
-                    torch.empty(size=tensor.size(), dtype=torch.long, device=device)
-                )
+            result = [
+                torch.empty(size=tensor.size(), dtype=torch.long, device=device)
+                for _ in range(self.get_world_size())
+            ]
+
             dist.gather(tensor.data, result, dst, group=self.main_group)
             return result
         dist.gather(tensor.data, [], dst, group=self.main_group)
@@ -229,12 +229,12 @@ class DistributedCommunicator(Communicator):
     def all_gather(self, tensor):
         """Gathers tensors from all parties in a list."""
         assert dist.is_initialized(), "initialize the communicator first"
-        result = []
         device = tensor.data.device
-        for _ in range(self.get_world_size()):
-            result.append(
-                torch.empty(size=tensor.size(), dtype=torch.long, device=device)
-            )
+        result = [
+            torch.empty(size=tensor.size(), dtype=torch.long, device=device)
+            for _ in range(self.get_world_size())
+        ]
+
         dist.all_gather(result, tensor.data, group=self.main_group)
         return result
 
@@ -245,11 +245,11 @@ class DistributedCommunicator(Communicator):
         group = self.main_group if group is None else group
         if batched:
             assert isinstance(input, list), "batched reduce input must be a list"
-            reqs = []
-            for tensor in input:
-                reqs.append(
-                    dist.broadcast(tensor.data, src, group=group, async_op=True)
-                )
+            reqs = [
+                dist.broadcast(tensor.data, src, group=group, async_op=True)
+                for tensor in input
+            ]
+
             for req in reqs:
                 req.wait()
         else:

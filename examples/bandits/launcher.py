@@ -202,8 +202,9 @@ def parse_args(hostname):
         "--visdom",
         default=hostname,
         type=str,
-        help="visdom server to use (default = %s)" % hostname,
+        help=f"visdom server to use (default = {hostname})",
     )
+
     parser.add_argument(
         "--pca", default=20, type=int, help="Number of PCA dimensions (0 for raw data)"
     )
@@ -308,12 +309,13 @@ def get_checkpoint_func(args):
     """
 
     def checkpoint_func(idx, model):
-        if "RANK" not in os.environ or os.environ["RANK"] == 0:
-            if args.checkpoint_folder is not None:
-                checkpoint_file = os.path.join(
-                    args.checkpoint_folder, "iter_%05d.torch" % idx
-                )
-                torch.save(model, checkpoint_file)
+        if (
+            "RANK" not in os.environ or os.environ["RANK"] == 0
+        ) and args.checkpoint_folder is not None:
+            checkpoint_file = os.path.join(
+                args.checkpoint_folder, "iter_%05d.torch" % idx
+            )
+            torch.save(model, checkpoint_file)
 
     return checkpoint_func
 
@@ -408,7 +410,7 @@ def build_learner(args, bandits, download_mnist):
         permfile=args.permfile,
         download_mnist_func=download_mnist,
     )
-    assert hasattr(bandits, args.learner), "unknown learner: %s" % args.learner
+    assert hasattr(bandits, args.learner), f"unknown learner: {args.learner}"
 
     def learner_func():
         getattr(bandits, args.learner)(

@@ -25,10 +25,10 @@ def graph(model):
 
     # create mapping to more interpretable node naming:
     mapping = {input_name: input_name for input_name in model.input_names}
-    modules = {name: module for name, module in model.named_modules()}
+    modules = dict(model.named_modules())
     for name, module in modules.items():
         op = str(type(module))[26:-2]
-        mapping[name] = "%s_%s" % (op, name)
+        mapping[name] = f"{op}_{name}"
 
     # create input variables:
     nodes = [
@@ -48,9 +48,10 @@ def graph(model):
         op = str(type(module))
         input_names = [mapping[name] for name in input_names]
         parameters = [
-            "%s: %s" % (name, parameter.size())
+            f"{name}: {parameter.size()}"
             for name, parameter in module.named_parameters()
         ]
+
         parameter_string = "; ".join(parameters).encode(encoding="utf_8")
 
         # add to graph:

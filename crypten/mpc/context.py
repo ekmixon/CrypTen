@@ -20,9 +20,10 @@ def _launch(func, rank, world_size, rendezvous_file, queue, func_args, func_kwar
     communicator_args = {
         "WORLD_SIZE": world_size,
         "RANK": rank,
-        "RENDEZVOUS": "file://%s" % rendezvous_file,
+        "RENDEZVOUS": f"file://{rendezvous_file}",
         "DISTRIBUTED_BACKEND": "gloo",
     }
+
     for key, val in communicator_args.items():
         os.environ[key] = str(val)
 

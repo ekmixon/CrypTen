@@ -21,7 +21,6 @@ class AutogradContext(_AutogradContext):
             "crypten.autograd_cryptensor.AutogradContext is deprecated. Please "
             "use crypten.gradients.AutogradContext instead."
         )
-        super().__init__(self)
 
 
 def AutogradCrypTensor(tensor, requires_grad=True):
@@ -33,7 +32,3 @@ def AutogradCrypTensor(tensor, requires_grad=True):
         "AutogradCrypTensor is deprecated. Please set the "
         "requires_grad attribute on the CrypTensor instead."
     )
-    if torch.is_tensor(tensor):
-        tensor = crypten.cryptensor(tensor)
-    tensor.requires_grad = requires_grad
-    return tensor

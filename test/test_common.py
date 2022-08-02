@@ -44,8 +44,9 @@ class TestCommon(unittest.TestCase):
             self._check(
                 decoded,
                 tensor,
-                "Encoding/decoding a %s failed." % "float" if float else "long",
+                'Encoding/decoding a float failed.' if float else "long",
             )
+
 
         # Make sure encoding a subclass of CrypTensor is a no-op
         cfg.mpc.provider = "TFP"
@@ -65,7 +66,7 @@ class TestCommon(unittest.TestCase):
         for dtype in [torch.uint8, torch.int8, torch.int16]:
             tensor = torch.zeros(5, dtype=dtype).random_()
             decoded = fpe.decode(fpe.encode(tensor)).type(dtype)
-            self._check(decoded, tensor, "Encoding/decoding a %s failed." % dtype)
+            self._check(decoded, tensor, f"Encoding/decoding a {dtype} failed.")
 
     def test_nearest_integer_division(self):
         # test without scaling:

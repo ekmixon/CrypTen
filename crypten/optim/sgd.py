@@ -53,13 +53,13 @@ class SGD(Optimizer):
         self, params, lr, momentum=0, dampening=0, weight_decay=0, nesterov=False
     ):
         if not isinstance(lr, (int, float)) or lr < 0.0:
-            raise ValueError("Invalid learning rate: {}".format(lr))
+            raise ValueError(f"Invalid learning rate: {lr}")
         if not isinstance(momentum, (int, float)) or momentum < 0.0:
-            raise ValueError("Invalid momentum value: {}".format(momentum))
+            raise ValueError(f"Invalid momentum value: {momentum}")
         if not isinstance(dampening, (int, float)):
-            raise ValueError("Invalid dampening value {}".format(dampening))
+            raise ValueError(f"Invalid dampening value {dampening}")
         if not isinstance(weight_decay, (int, float)) or weight_decay < 0.0:
-            raise ValueError("Invalid weight_decay value: {}".format(weight_decay))
+            raise ValueError(f"Invalid weight_decay value: {weight_decay}")
 
         defaults = {
             "lr": lr,
@@ -108,11 +108,7 @@ class SGD(Optimizer):
                         else:
                             buf = param_state["momentum_buffer"]
                             buf.mul_(momentum).add_(d_p.mul(1 - dampening))
-                        if nesterov:
-                            d_p = d_p.add(buf.mul(momentum))
-                        else:
-                            d_p = buf
-
+                        d_p = d_p.add(buf.mul(momentum)) if nesterov else buf
                     p.sub_(d_p.mul(group["lr"]))
 
             return loss

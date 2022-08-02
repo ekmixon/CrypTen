@@ -45,8 +45,7 @@ def parse_args():
         default="10.1",
         help="build pytorch with the corresponding version of cuda-toolkit",
     )
-    args = parser.parse_args()
-    return args
+    return parser.parse_args()
 
 
 def get_dates(day=26):
@@ -105,22 +104,28 @@ for date in dates:
         continue
     # checkout closest version before date
     subprocess.call(
-        f"cd /tmp/CrypTen && "
-        + f"git checkout `git rev-list -n 1 --before='{date} 01:01' master`",
+        (
+            "cd /tmp/CrypTen && "
+            + f"git checkout `git rev-list -n 1 --before='{date} 01:01' master`"
+        ),
         shell=True,
     )
+
     for mode, arg in modes.items():
-        subprocess.call(venv + "pip3 install CrypTen/.", shell=True)
+        subprocess.call(f"{venv}pip3 install CrypTen/.", shell=True)
         subprocess.call(f"echo Generating {date} Benchmarks for {mode}", shell=True)
         path = os.path.join(PATH, f"dash_app/data/{date}", mode)
         subprocess.call(f"mkdir -p {path}", shell=True)
         subprocess.call(
-            venv + f"cd {PATH} && python3 benchmark.py -p '{path}' {arg}", shell=True
-        )
-        subprocess.call(
-            venv + f"cd {PATH} && python3 benchmark.py -p '{path}' -d 'cuda' {arg}",
+            f"{venv}cd {PATH} && python3 benchmark.py -p '{path}' {arg}",
             shell=True,
         )
+
+        subprocess.call(
+            f"{venv}cd {PATH} && python3 benchmark.py -p '{path}' -d 'cuda' {arg}",
+            shell=True,
+        )
+
 
 # clean up
 shutil.rmtree("/tmp/.venv", ignore_errors=True)
